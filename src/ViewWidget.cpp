@@ -14,7 +14,7 @@ constexpr auto INFO_MESSAGE_TIMEOUT = std::chrono::seconds(10);
 
 ViewWidget::ViewWidget(QWidget *parent) : QWidget(parent) {}
 
-void ViewWidget::addMessage(std::string message, ViewWidget::MessagePriority priority)
+void ViewWidget::addMessage(QString message, ViewWidget::MessagePriority priority)
 {
   ViewWidgetMessage msg;
   msg.message   = message;
@@ -48,7 +48,7 @@ void ViewWidget::drawAndUpdateMessages(QPainter &painter)
       continue;
     }
 
-    auto text     = QString::fromStdString(it->message);
+    auto text     = it->message;
     auto textSize = QFontMetrics(painter.font()).size(0, text);
 
     QRect textRect;

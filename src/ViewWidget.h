@@ -20,7 +20,7 @@ public:
     Info
   };
 
-  void addMessage(std::string message, MessagePriority priority);
+  void addMessage(QString message, MessagePriority priority);
 
 private:
   virtual void paintEvent(QPaintEvent *event) override;
@@ -28,9 +28,9 @@ private:
   struct ViewWidgetMessage
   {
     std::chrono::time_point<std::chrono::steady_clock> timeAdded;
-    std::string                                        message;
+    QString                                            message;
     MessagePriority                                    priority;
   };
   std::vector<ViewWidgetMessage> messages;
-  void drawAndUpdateMessages(QPainter &painter);
+  void                           drawAndUpdateMessages(QPainter &painter);
 };

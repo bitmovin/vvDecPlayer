@@ -5,8 +5,8 @@ TEMPLATE = app
 CONFIG += c++11
 CONFIG -= debug_and_release
 
-SOURCES += $$files(src/*.cpp, false)
-HEADERS += $$files(src/*.h, false)
+SOURCES += $$files(src/*.cpp, true)
+HEADERS += $$files(src/*.h, true)
 FORMS += $$files(ui/*.ui, false)
 
 INCLUDEPATH += src/

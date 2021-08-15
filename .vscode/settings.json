@@ -54,6 +54,17 @@
     "xstring": "cpp",
     "xtr1common": "cpp",
     "xtree": "cpp",
-    "xutility": "cpp"
+    "xutility": "cpp",
+    "qcoreapplication": "cpp",
+    "ctime": "cpp",
+    "filesystem": "cpp",
+    "iomanip": "cpp",
+    "locale": "cpp",
+    "regex": "cpp",
+    "sstream": "cpp",
+    "xlocbuf": "cpp",
+    "xlocmes": "cpp",
+    "xlocmon": "cpp",
+    "xloctime": "cpp"
   }
 }

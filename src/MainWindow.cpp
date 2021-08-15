@@ -3,7 +3,7 @@
 
 #include "Mainwindow.h"
 
-#include "typedef.h"
+#include <common/typedef.h>
 
 #include <QKeyEvent>
 
