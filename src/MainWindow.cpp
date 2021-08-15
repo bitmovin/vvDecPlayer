@@ -1,5 +1,5 @@
 /*  Copyright: Christian Feldmann (christian.feldmann@bitmovin.com)
-*/
+ */
 
 #include "Mainwindow.h"
 
@@ -12,6 +12,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
   this->ui.setupUi(this);
   this->setFocusPolicy(Qt::StrongFocus);
   this->createMenusAndActions();
+
+  this->playbackController = std::make_unique<PlaybackController>(this->ui.viewWidget);
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event)

@@ -11,6 +11,7 @@
 #include <QActionGroup>
 
 #include "ui_MainWindows.h"
+#include "PlaybackController.h"
 
 class QAction;
 class playlistItem;
@@ -42,4 +43,6 @@ private:
   QScopedPointer<QActionGroup> actionGroup;
 
   bool wasMaximizedBeforeFullScreen {false};
+
+  std::unique_ptr<PlaybackController> playbackController;
 };
