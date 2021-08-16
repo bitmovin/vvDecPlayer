@@ -51,6 +51,4 @@ private:
   std::thread             downloaderThread;
   std::condition_variable downloaderCV;
   bool                    downloaderAbort{false};
-
-  QByteArray readBuffer;
 };

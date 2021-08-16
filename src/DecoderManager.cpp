@@ -5,8 +5,8 @@
 
 #include "decoder/decoderVVDec.h"
 
-#include <chrono>
 #include <QDebug>
+#include <chrono>
 
 DecoderManager::DecoderManager(ILogger *logger) : logger(logger)
 {
@@ -38,10 +38,7 @@ void DecoderManager::decodeFile(std::shared_ptr<File> file)
   this->decoderCV.notify_one();
 }
 
-bool DecoderManager::isDecodeRunning()
-{
-  return bool(this->currentFile);
-}
+bool DecoderManager::isDecodeRunning() { return bool(this->currentFile); }
 
 void DecoderManager::runDecoder()
 {
@@ -53,7 +50,7 @@ void DecoderManager::runDecoder()
       std::unique_lock<std::mutex> lck(this->currentFileMutex);
       if (!this->currentFile)
       {
-        this->decoderCV.wait(lck, [this]() { return this->currentFile; });
+        this->decoderCV.wait(lck, [this]() { return this->currentFile || this->decoderAbort; });
       }
 
       if (this->decoderAbort)
@@ -73,4 +70,3 @@ void DecoderManager::runDecoder()
     emit onDecodeOfSegmentDone();
   }
 }
-
