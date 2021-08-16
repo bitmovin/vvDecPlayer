@@ -1,28 +1,34 @@
 /*  Copyright: Christian Feldmann (christian.feldmann@bitmovin.com)
-*/
+ */
 
 #pragma once
 
-#include "ViewWidget.h"
+#include "FileDownloadManager.h"
+#include "ILogger.h"
 #include <decoder/decoderBase.h>
 
-#include <QDir>
 
-class PlaybackController
+#include <QDir>
+#include <QObject>
+
+class PlaybackController : public QObject
 {
+  Q_OBJECT
+
 public:
-  PlaybackController(ViewWidget *viewWidget);
+  PlaybackController(ILogger *logger);
 
   void reset();
 
   void openDirectory(QDir path, QString segmentPattern);
 
+public slots:
+  void onSegmentReadyForDecode();
+
 private:
-  ViewWidget *viewWidget {};
+  ILogger *logger{};
 
   std::unique_ptr<decoder::decoderBase> decoder;
-
-  std::vector<QString> localFileList;
-
-  QString segmentPattern;
+  
+  std::unique_ptr<FileDownloadManager>  fileDownloadManager;
 };

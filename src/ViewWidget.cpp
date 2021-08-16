@@ -14,8 +14,10 @@ constexpr auto INFO_MESSAGE_TIMEOUT = std::chrono::seconds(10);
 
 ViewWidget::ViewWidget(QWidget *parent) : QWidget(parent) {}
 
-void ViewWidget::addMessage(QString message, ViewWidget::MessagePriority priority)
+void ViewWidget::addMessage(QString message, LoggingPriority priority)
 {
+  std::scoped_lock lock(this->messagesMutex);
+
   ViewWidgetMessage msg;
   msg.message   = message;
   msg.priority  = priority;
@@ -42,7 +44,7 @@ void ViewWidget::drawAndUpdateMessages(QPainter &painter)
   while (it != this->messages.end())
   {
     auto age = std::chrono::steady_clock::now() - it->timeAdded;
-    if (it->priority == MessagePriority::Info && age > INFO_MESSAGE_TIMEOUT)
+    if (it->priority == LoggingPriority::Info && age > INFO_MESSAGE_TIMEOUT)
     {
       it = this->messages.erase(it);
       continue;
@@ -58,9 +60,9 @@ void ViewWidget::drawAndUpdateMessages(QPainter &painter)
     // Draw the colored background box
     auto       boxRect = textRect + QMargins(MARGIN, MARGIN, MARGIN, MARGIN);
     const auto colorMap =
-        std::map<MessagePriority, QColor>({{MessagePriority::Info, Qt::cyan},
-                                           {MessagePriority::Warning, Qt::darkYellow},
-                                           {MessagePriority::Error, Qt::darkRed}});
+        std::map<LoggingPriority, QColor>({{LoggingPriority::Info, Qt::cyan},
+                                           {LoggingPriority::Warning, Qt::darkYellow},
+                                           {LoggingPriority::Error, Qt::darkRed}});
     painter.fillRect(boxRect, colorMap.at(it->priority));
     painter.drawRect(boxRect);
 

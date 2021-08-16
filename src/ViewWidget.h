@@ -3,25 +3,21 @@
 
 #pragma once
 
+#include "ILogger.h"
+
 #include <QWidget>
 #include <chrono>
+#include <mutex>
 
-class ViewWidget : public QWidget
+class ViewWidget : public QWidget, public ILogger
 {
   Q_OBJECT;
 
 public:
   ViewWidget(QWidget *parent);
 
-  enum class MessagePriority
-  {
-    Error,
-    Warning,
-    Info
-  };
-
-  void addMessage(QString message, MessagePriority priority);
-  void clearMessages();
+  void addMessage(QString message, LoggingPriority priority) override;
+  void clearMessages() override;
 
 private:
   virtual void paintEvent(QPaintEvent *event) override;
@@ -30,8 +26,10 @@ private:
   {
     std::chrono::time_point<std::chrono::steady_clock> timeAdded;
     QString                                            message;
-    MessagePriority                                    priority;
+    LoggingPriority                                    priority;
   };
   std::vector<ViewWidgetMessage> messages;
-  void                           drawAndUpdateMessages(QPainter &painter);
+  std::mutex                     messagesMutex;
+
+  void drawAndUpdateMessages(QPainter &painter);
 };

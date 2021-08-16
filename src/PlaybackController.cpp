@@ -5,51 +5,36 @@
 
 #include <decoder/decoderVVDec.h>
 
-PlaybackController::PlaybackController(ViewWidget *viewWidget) : viewWidget(viewWidget)
+PlaybackController::PlaybackController(ILogger *logger) : logger(logger)
 {
-  assert(viewWidget != nullptr);
+  assert(logger != nullptr);
   this->reset();
 }
 
 void PlaybackController::reset()
 {
-  this->viewWidget->clearMessages();
+  this->fileDownloadManager = std::make_unique<FileDownloadManager>(this->logger);
+
+  this->logger->clearMessages();
 
   this->decoder = std::make_unique<decoder::decoderVVDec>();
   if (this->decoder->errorInDecoder())
   {
-    this->viewWidget->addMessage("Error in decoder: " + this->decoder->decoderErrorString(),
-                                 ViewWidget::MessagePriority::Error);
+    this->logger->addMessage("Error in decoder: " + this->decoder->decoderErrorString(),
+                             LoggingPriority::Error);
   }
 
-  this->viewWidget->addMessage("Playback Controller initialized",
-                               ViewWidget::MessagePriority::Info);
+  connect(this->fileDownloadManager.get(),
+          &FileDownloadManager::onSegmentReadyForDecode,
+          this,
+          &PlaybackController::onSegmentReadyForDecode);
 
-  this->localFileList.clear();
-  this->segmentPattern = {};
+  this->logger->addMessage("Playback Controller initialized", LoggingPriority::Info);
 }
 
 void PlaybackController::openDirectory(QDir path, QString segmentPattern)
 {
-  if (!this->localFileList.empty())
-    this->reset();
-
-  this->segmentPattern = segmentPattern;
-
-  unsigned segmentNr = 0;
-  while (true)
-  {
-    auto file = segmentPattern;
-    file.replace("%i", QString("%1").arg(segmentNr));
-    if (!path.exists(file))
-      break;
-
-    auto fullFilePath = path.filePath(file);
-    this->localFileList.push_back(fullFilePath);
-
-    segmentNr++;
-  }
-
-  this->viewWidget->addMessage(QString("Found %1 local files to play.").arg(segmentNr),
-                               ViewWidget::MessagePriority::Info);
+  this->fileDownloadManager->openDirectory(path, segmentPattern);
 }
+
+void PlaybackController::onSegmentReadyForDecode() {}
