@@ -8,7 +8,7 @@
 #include <QDebug>
 #include <chrono>
 
-#define DEBUG_DECODER_MANAGER 1
+#define DEBUG_DECODER_MANAGER 0
 #if DEBUG_DECODER_MANAGER
 #include <QDebug>
 #define DEBUG(f) qDebug() << f

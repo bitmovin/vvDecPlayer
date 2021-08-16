@@ -4,7 +4,7 @@
 #include "FrameConversionBuffer.h"
 #include <YUV/YUVConversion.h>
 
-#define DEBUG_CONVERSION 1
+#define DEBUG_CONVERSION 0
 #if DEBUG_CONVERSION
 #include <QDebug>
 #define DEBUG(f) qDebug() << f
