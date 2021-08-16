@@ -8,6 +8,12 @@
 PlaybackController::PlaybackController(ViewWidget *viewWidget) : viewWidget(viewWidget)
 {
   assert(viewWidget != nullptr);
+  this->reset();
+}
+
+void PlaybackController::reset()
+{
+  this->viewWidget->clearMessages();
 
   this->decoder = std::make_unique<decoder::decoderVVDec>();
   if (this->decoder->errorInDecoder())

@@ -1,29 +1,31 @@
 /*  Copyright: Christian Feldmann (christian.feldmann@bitmovin.com)
-*/
+ */
 
 #pragma once
 
 #include <QAction>
+#include <QActionGroup>
 #include <QDesktopServices>
 #include <QMainWindow>
-#include <QSettings>
 #include <QMouseEvent>
-#include <QActionGroup>
+#include <QSettings>
 
-#include "ui_MainWindows.h"
 #include "PlaybackController.h"
+#include "ui_MainWindows.h"
 
 class QAction;
 class playlistItem;
 
-class MainWindow : public QMainWindow {
+class MainWindow : public QMainWindow
+{
   Q_OBJECT
 
 public:
   explicit MainWindow(QWidget *parent = 0);
 
 protected:
-  virtual void mouseDoubleClickEvent(QMouseEvent *event) override {
+  virtual void mouseDoubleClickEvent(QMouseEvent *event) override
+  {
     this->actionFullScreen.trigger();
     event->accept();
   }
@@ -31,6 +33,7 @@ protected:
 private slots:
 
   void toggleFullscreen();
+  void onSelectVVDeCLibrary();
 
 private:
   Ui::MainWindow ui;
@@ -38,11 +41,11 @@ private:
   virtual void keyPressEvent(QKeyEvent *event) override;
 
 private:
-  void createMenusAndActions();
-  QAction actionFullScreen;
+  void                         createMenusAndActions();
+  QAction                      actionFullScreen;
   QScopedPointer<QActionGroup> actionGroup;
 
-  bool wasMaximizedBeforeFullScreen {false};
+  bool wasMaximizedBeforeFullScreen{false};
 
   std::unique_ptr<PlaybackController> playbackController;
 };

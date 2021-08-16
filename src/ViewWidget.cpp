@@ -70,3 +70,9 @@ void ViewWidget::drawAndUpdateMessages(QPainter &painter)
     it++;
   }
 }
+
+void ViewWidget::clearMessages()
+{
+  this->messages.clear();
+  this->update();
+}

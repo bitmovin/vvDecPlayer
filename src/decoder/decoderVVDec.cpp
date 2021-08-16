@@ -103,9 +103,7 @@ void decoderVVDec::loadLibrary()
 {
   // Try to load the decoder library (.dll on Windows, .so on Linux, .dylib on Mac)
   QSettings settings;
-  settings.beginGroup("Decoders");
   this->loadDecoderLibrary(settings.value("libVVDecFile", "").toString());
-  settings.endGroup();
 
   if (this->decoderState != DecoderState::Error)
     this->allocateNewDecoder();
@@ -501,7 +499,7 @@ QString decoderVVDec::getDecoderName() const
 
 bool decoderVVDec::checkLibraryFile(QString libFilePath, QString &error)
 {
-  decoderVVDec testDecoder;
+  decoderVVDec testDecoder(false);
 
   // Try to load the library file
   testDecoder.library.setFileName(libFilePath);

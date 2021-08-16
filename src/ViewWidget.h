@@ -21,6 +21,7 @@ public:
   };
 
   void addMessage(QString message, MessagePriority priority);
+  void clearMessages();
 
 private:
   virtual void paintEvent(QPaintEvent *event) override;

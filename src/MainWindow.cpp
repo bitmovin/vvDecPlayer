@@ -4,8 +4,11 @@
 #include "Mainwindow.h"
 
 #include <common/typedef.h>
+#include <decoder/decoderVVDec.h>
 
 #include <QKeyEvent>
+#include <QFileDialog>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
@@ -91,8 +94,6 @@ void MainWindow::createMenusAndActions()
   QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
   fileMenu->addAction("Exit", this, &MainWindow::close);
 
-  auto viewMenu = this->ui.menuBar->addMenu("View");
-
   const bool menuActionsNoteCreatedYet = this->actionGroup.isNull();
   Q_ASSERT_X(
       menuActionsNoteCreatedYet, Q_FUNC_INFO, "Only call this initialization function once.");
@@ -118,6 +119,7 @@ void MainWindow::createMenusAndActions()
 
   this->actionGroup.reset(new QActionGroup(this));
 
+  auto viewMenu = this->ui.menuBar->addMenu("View");
   configureCheckableAction(this->actionFullScreen,
                            nullptr,
                            "&Fullscreen Mode",
@@ -125,4 +127,44 @@ void MainWindow::createMenusAndActions()
                            &MainWindow::toggleFullscreen,
                            Qt::CTRL | Qt::Key_F);
   viewMenu->addAction(&this->actionFullScreen);
+
+  auto settingsMenu = this->ui.menuBar->addMenu("Settings");
+  settingsMenu->addAction("Select VVdeC library ...", this, &MainWindow::onSelectVVDeCLibrary);
+}
+
+void MainWindow::onSelectVVDeCLibrary()
+{
+  QFileDialog fileDialog(this, "Select VVDeC decoder library");
+  fileDialog.setDirectory(QDir::current());
+  fileDialog.setFileMode(QFileDialog::ExistingFile);
+  if (is_Q_OS_LINUX)
+    fileDialog.setNameFilter("Lirary files (*.so.* *.so)");
+  if (is_Q_OS_MAC)
+    fileDialog.setNameFilter("Library files (*.dylib)");
+  if (is_Q_OS_WIN)
+    fileDialog.setNameFilter("Library files (*.dll)");
+
+  if (fileDialog.exec())
+  {
+    auto files = fileDialog.selectedFiles();
+    if (files.size() == 0)
+      return;
+    auto file = files[0];
+    
+    QString error;
+    if (!decoder::decoderVVDec::checkLibraryFile(file, error))
+    {
+      QMessageBox::critical(
+        this,
+        "Error testing the library",
+        "The selected file does not appear to be a usable libVVDec decoder library. Error: " +
+            error);
+            return;
+    }
+
+    QSettings settings;
+    settings.setValue("libVVDecFile", file);
+
+    this->playbackController->reset();
+  }
 }

@@ -11,6 +11,8 @@ class PlaybackController
 public:
   PlaybackController(ViewWidget *viewWidget);
 
+  void reset();
+
 private:
   ViewWidget *viewWidget {};
 
