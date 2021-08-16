@@ -4,6 +4,15 @@
 #include "ViewWidget.h"
 
 #include <QPainter>
+#include <QTimerEvent>
+
+#define DEBUG_WIDGET 1
+#if DEBUG_WIDGET
+#include <QDebug>
+#define DEBUG(f) qDebug() << f
+#else
+#define DEBUG(f) ((void)0)
+#endif
 
 namespace
 {
@@ -12,7 +21,18 @@ constexpr auto INFO_MESSAGE_TIMEOUT = std::chrono::seconds(10);
 
 }
 
-ViewWidget::ViewWidget(QWidget *parent) : QWidget(parent) {}
+ViewWidget::ViewWidget(QWidget *parent) : QWidget(parent)
+{
+  double frameRate     = 24.0;
+  auto   timerInterval = int(1000.0 / frameRate);
+  timer.start(timerInterval, Qt::PreciseTimer, this);
+}
+
+void ViewWidget::setFrameConversionBuffer(FrameConversionBuffer *frameConversionBuffer)
+{
+  assert(frameConversionBuffer != nullptr);
+  this->frameConversionBuffer = frameConversionBuffer;
+}
 
 void ViewWidget::addMessage(QString message, LoggingPriority priority)
 {
@@ -32,6 +52,12 @@ void ViewWidget::paintEvent(QPaintEvent *)
   // Get the full size of the area that we can draw on (from the paint device base)
   QPoint drawArea_botR(width(), height());
 
+  if (!this->currentImage.isNull())
+  {
+    painter.drawImage(0, 0, this->currentImage);
+  }
+
+  this->drawFps(painter);
   this->drawAndUpdateMessages(painter);
 }
 
@@ -73,8 +99,56 @@ void ViewWidget::drawAndUpdateMessages(QPainter &painter)
   }
 }
 
+void ViewWidget::drawFps(QPainter &painter)
+{
+  auto text     = QString("%1").arg(this->currentFps);
+  auto textSize = QFontMetrics(painter.font()).size(0, text);
+
+  QRect textRect;
+  textRect.setSize(textSize);
+  textRect.moveTopRight(QPoint(this->width(), 0));
+
+  auto boxRect = textRect + QMargins(5, 5, 5, 5);
+  painter.drawText(textRect, Qt::AlignCenter, text);
+}
+
 void ViewWidget::clearMessages()
 {
   this->messages.clear();
+  this->update();
+}
+
+void ViewWidget::timerEvent(QTimerEvent *event)
+{
+  if (event && event->timerId() != timer.timerId())
+    return QWidget::timerEvent(event);
+  if (this->frameConversionBuffer == nullptr)
+    return;
+
+  if (auto nextImage = this->frameConversionBuffer->getNextImage())
+  {
+    DEBUG("Timer even. Got next image");
+    this->currentImage = *nextImage;
+  }
+  else
+  {
+    DEBUG("Timer even. No new image available.");
+    return;
+  }
+
+  // Update the FPS counter every 50 frames
+  this->timerFPSCounter++;
+  if (this->timerFPSCounter >= 50)
+  {
+    auto   newFrameTime         = QTime::currentTime();
+    double msecsSinceLastUpdate = (double)this->timerLastFPSTime.msecsTo(newFrameTime);
+
+    // Print the frames per second as float with one digit after the decimal dot.
+    this->currentFps = (50.0 / (msecsSinceLastUpdate / 1000.0));
+
+    this->timerLastFPSTime = QTime::currentTime();
+    this->timerFPSCounter  = 0;
+  }
+
   this->update();
 }

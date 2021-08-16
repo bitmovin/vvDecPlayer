@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "YUVPixelFormat.h"
 #include "rgbPixelFormat.h"
+#include <YUV/YUVPixelFormat.h>
 #include <common/EnumMapper.h>
 #include <common/typedef.h>
 

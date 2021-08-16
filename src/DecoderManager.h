@@ -8,15 +8,16 @@
 #include <condition_variable>
 #include <decoder/decoderBase.h>
 #include <thread>
-
+#include <optional>
 #include <QObject>
+#include <FrameConversionBuffer.h>
 
 class DecoderManager : public QObject
 {
   Q_OBJECT
 
 public:
-  DecoderManager(ILogger *logger);
+  DecoderManager(ILogger *logger, FrameConversionBuffer *frameConversionBuffer);
   ~DecoderManager();
 
   bool isDecodeRunning();
@@ -27,11 +28,15 @@ signals:
 
 private:
   ILogger *logger{};
+  FrameConversionBuffer *frameConversionBuffer{};
 
   void runDecoder();
 
+  std::optional<std::size_t> findNextNalInCurFile(std::size_t start);
+
   std::shared_ptr<File> currentFile;
   std::mutex            currentFileMutex;
+  std::size_t           currentDataOffset{};
 
   std::unique_ptr<decoder::decoderBase> decoder;
 

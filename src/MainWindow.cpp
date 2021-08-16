@@ -18,6 +18,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
   this->createMenusAndActions();
 
   this->playbackController = std::make_unique<PlaybackController>(this->ui.viewWidget);
+  this->ui.viewWidget->setFrameConversionBuffer(
+      this->playbackController->getFrameConversionBuffer());
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event)

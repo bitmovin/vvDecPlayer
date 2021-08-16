@@ -14,8 +14,10 @@ PlaybackController::PlaybackController(ILogger *logger) : logger(logger)
 
 void PlaybackController::reset()
 {
-  this->fileDownloadManager = std::make_unique<FileDownloadManager>(this->logger);
-  this->decoderManager      = std::make_unique<DecoderManager>(this->logger);
+  this->frameConversionBuffer = std::make_unique<FrameConversionBuffer>();
+  this->fileDownloadManager   = std::make_unique<FileDownloadManager>(this->logger);
+  this->decoderManager =
+      std::make_unique<DecoderManager>(this->logger, this->frameConversionBuffer.get());
 
   this->logger->clearMessages();
 

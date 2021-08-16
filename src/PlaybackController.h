@@ -5,8 +5,8 @@
 
 #include "DecoderManager.h"
 #include "FileDownloadManager.h"
+#include "FrameConversionBuffer.h"
 #include "ILogger.h"
-
 
 #include <QDir>
 #include <QObject>
@@ -22,6 +22,8 @@ public:
 
   void openDirectory(QDir path, QString segmentPattern);
 
+  FrameConversionBuffer *getFrameConversionBuffer() { return this->frameConversionBuffer.get(); }
+
 public slots:
   void onSegmentReadyForDecode();
   void onDecodeOfSegmentDone();
@@ -29,6 +31,7 @@ public slots:
 private:
   ILogger *logger{};
 
-  std::unique_ptr<FileDownloadManager> fileDownloadManager;
-  std::unique_ptr<DecoderManager>      decoderManager;
+  std::unique_ptr<FileDownloadManager>   fileDownloadManager;
+  std::unique_ptr<DecoderManager>        decoderManager;
+  std::unique_ptr<FrameConversionBuffer> frameConversionBuffer;
 };
