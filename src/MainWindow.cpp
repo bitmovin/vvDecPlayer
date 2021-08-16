@@ -6,8 +6,9 @@
 #include <common/typedef.h>
 #include <decoder/decoderVVDec.h>
 
-#include <QKeyEvent>
 #include <QFileDialog>
+#include <QInputDialog>
+#include <QKeyEvent>
 #include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
@@ -92,6 +93,8 @@ void MainWindow::toggleFullscreen()
 void MainWindow::createMenusAndActions()
 {
   QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
+  fileMenu->addAction("Open local folder ...", this, &MainWindow::openLocalFolder);
+  fileMenu->addSeparator();
   fileMenu->addAction("Exit", this, &MainWindow::close);
 
   const bool menuActionsNoteCreatedYet = this->actionGroup.isNull();
@@ -132,6 +135,43 @@ void MainWindow::createMenusAndActions()
   settingsMenu->addAction("Select VVdeC library ...", this, &MainWindow::onSelectVVDeCLibrary);
 }
 
+void MainWindow::openLocalFolder()
+{
+  QFileDialog fileDialog(this, "Select directory with VVC segments");
+  fileDialog.setDirectory(QDir::current());
+  fileDialog.setFileMode(QFileDialog::Directory);
+
+  if (fileDialog.exec())
+  {
+    auto files = fileDialog.selectedFiles();
+    if (files.size() == 0)
+      return;
+    auto path = files[0];
+
+    bool ok             = false;
+    auto segmentPattern = QInputDialog::getText(this,
+                                                "Segment name pattern",
+                                                "Please provide a pattern for the files to read "
+                                                "from the directory (e.g. \"segment_%i.vvc\")",
+                                                QLineEdit::Normal,
+                                                "segment-%i.vvc",
+                                                &ok);
+    if (!ok)
+      return;
+
+    if (!segmentPattern.contains("%i"))
+    {
+      QMessageBox::critical(
+          this,
+          "Error in segment name",
+          "The selected segment name pattern is invalid. It must contain a \"%i\"");
+      return;
+    }
+
+    this->playbackController->openDirectory(path, segmentPattern);
+  }
+}
+
 void MainWindow::onSelectVVDeCLibrary()
 {
   QFileDialog fileDialog(this, "Select VVDeC decoder library");
@@ -150,16 +190,16 @@ void MainWindow::onSelectVVDeCLibrary()
     if (files.size() == 0)
       return;
     auto file = files[0];
-    
+
     QString error;
     if (!decoder::decoderVVDec::checkLibraryFile(file, error))
     {
       QMessageBox::critical(
-        this,
-        "Error testing the library",
-        "The selected file does not appear to be a usable libVVDec decoder library. Error: " +
-            error);
-            return;
+          this,
+          "Error testing the library",
+          "The selected file does not appear to be a usable libVVDec decoder library. Error: " +
+              error);
+      return;
     }
 
     QSettings settings;

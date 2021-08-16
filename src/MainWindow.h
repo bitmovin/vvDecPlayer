@@ -32,6 +32,7 @@ protected:
 
 private slots:
 
+  void openLocalFolder();
   void toggleFullscreen();
   void onSelectVVDeCLibrary();
 
