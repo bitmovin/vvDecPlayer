@@ -10,8 +10,8 @@ constexpr qint64 READ_SIZE = 1024 * 1024;
 
 FileDownloader::FileDownloader(ILogger *logger) : logger(logger)
 {
-  this->downloaderThread = std::thread(&FileDownloader::runDownloader, this);
   this->readBuffer.resize(READ_SIZE);
+  this->downloaderThread = std::thread(&FileDownloader::runDownloader, this);
 }
 
 void FileDownloader::downloadLocalFile(QString pathOrURL)
@@ -25,12 +25,14 @@ void FileDownloader::downloadLocalFile(QString pathOrURL)
   f->isLocalFile = true;
   f->nrBytes     = std::size_t(fileInfo.size());
 
+  qDebug() << "Starting download of file " << pathOrURL;
+
   std::scoped_lock lock(this->currentFileMutex);
   this->currentFile = f;
   this->downloaderCV.notify_one();
 }
 
-std::shared_ptr<FileDownloader::File> FileDownloader::getDownloadedFile()
+std::shared_ptr<File> FileDownloader::getNextDownloadedFile()
 {
   if (this->downloadQueueDone.empty() || this->downloadQueueDone.front()->downloadProgress != 100.0)
     return {};
@@ -39,6 +41,10 @@ std::shared_ptr<FileDownloader::File> FileDownloader::getDownloadedFile()
   this->downloadQueueDone.pop();
   return file;
 }
+
+std::size_t FileDownloader::nrFilesInDownloadedQueue() { return this->downloadQueueDone.size(); }
+
+bool FileDownloader::isDownloadRunning() { return bool(this->currentFile); }
 
 void FileDownloader::runDownloader()
 {

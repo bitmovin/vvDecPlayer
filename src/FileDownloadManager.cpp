@@ -3,6 +3,13 @@
 
 #include "FileDownloadManager.h"
 
+namespace
+{
+
+constexpr unsigned MAX_FILES_IN_QUEUE = 5;
+
+}
+
 FileDownloadManager::FileDownloadManager(ILogger *logger) : logger(logger)
 {
   assert(logger != nullptr);
@@ -39,13 +46,27 @@ void FileDownloadManager::openDirectory(QDir path, QString segmentPattern)
   }
 }
 
+std::shared_ptr<File> FileDownloadManager::getNextDownloadedFile()
+{
+  auto file = this->fileDownloader->getNextDownloadedFile();
+  if (!this->fileDownloader->isDownloadRunning() &&
+      this->fileDownloader->nrFilesInDownloadedQueue() < MAX_FILES_IN_QUEUE)
+    this->startDownloadOfNextFile();
+  return file;
+}
+
 void FileDownloadManager::onDownloadDone()
 {
   emit onSegmentReadyForDecode();
 
+  if (this->fileDownloader->nrFilesInDownloadedQueue() < MAX_FILES_IN_QUEUE)
+    this->startDownloadOfNextFile();
+}
+
+void FileDownloadManager::startDownloadOfNextFile()
+{
   this->currentFileIt++;
   if (this->currentFileIt == this->localFileList.end())
     this->currentFileIt = this->localFileList.begin();
-
   this->fileDownloader->downloadLocalFile(*this->currentFileIt);
 }

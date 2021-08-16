@@ -3,11 +3,11 @@
 
 #pragma once
 
-#include "ILogger.h"
 #include "FileDownloader.h"
+#include "ILogger.h"
 
-#include <QObject>
 #include <QDir>
+#include <QObject>
 
 class FileDownloadManager : public QObject
 {
@@ -16,7 +16,9 @@ class FileDownloadManager : public QObject
 public:
   FileDownloadManager(ILogger *logger);
 
-  void openDirectory(QDir path, QString segmentPattern);
+  void                  openDirectory(QDir path, QString segmentPattern);
+  std::shared_ptr<File> getNextDownloadedFile();
+  bool                  isDownloadRunning() { return this->fileDownloader->isDownloadRunning(); }
 
 signals:
   void onSegmentReadyForDecode();
@@ -27,8 +29,10 @@ private slots:
 private:
   ILogger *logger{};
 
-  std::vector<QString> localFileList;
+  void startDownloadOfNextFile();
+
+  std::vector<QString>           localFileList;
   std::vector<QString>::iterator currentFileIt;
 
-  std::unique_ptr<FileDownloader>       fileDownloader;
+  std::unique_ptr<FileDownloader> fileDownloader;
 };

@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "DecoderManager.h"
 #include "FileDownloadManager.h"
 #include "ILogger.h"
-#include <decoder/decoderBase.h>
 
 
 #include <QDir>
@@ -24,11 +24,11 @@ public:
 
 public slots:
   void onSegmentReadyForDecode();
+  void onDecodeOfSegmentDone();
 
 private:
   ILogger *logger{};
 
-  std::unique_ptr<decoder::decoderBase> decoder;
-  
-  std::unique_ptr<FileDownloadManager>  fileDownloadManager;
+  std::unique_ptr<FileDownloadManager> fileDownloadManager;
+  std::unique_ptr<DecoderManager>      decoderManager;
 };

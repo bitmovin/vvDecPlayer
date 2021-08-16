@@ -4,12 +4,10 @@
 #pragma once
 
 #include "ILogger.h"
+#include <common/File.h>
 
 #include <QByteArray>
 #include <QObject>
-#include <QTemporaryFile>
-#include <atomic>
-#include <chrono>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -31,21 +29,9 @@ public:
 
   void downloadLocalFile(QString pathOrURL);
 
-  using Time = std::chrono::time_point<std::chrono::steady_clock>;
-  struct File
-  {
-    QString        pathOrURL;
-    QTemporaryFile localFile;
-    Time           start{};
-    Time           end{};
-    std::size_t    nrBytes{};
-    bool           isLocalFile{};
-
-    using Percent = double;
-    std::atomic<Percent> downloadProgress{0.0};
-  };
-
-  std::shared_ptr<File> getDownloadedFile();
+  std::shared_ptr<File> getNextDownloadedFile();
+  std::size_t           nrFilesInDownloadedQueue();
+  bool                  isDownloadRunning();
 
 signals:
 

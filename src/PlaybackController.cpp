@@ -3,6 +3,7 @@
 
 #include "PlaybackController.h"
 
+#include <QDebug>
 #include <decoder/decoderVVDec.h>
 
 PlaybackController::PlaybackController(ILogger *logger) : logger(logger)
@@ -17,17 +18,15 @@ void PlaybackController::reset()
 
   this->logger->clearMessages();
 
-  this->decoder = std::make_unique<decoder::decoderVVDec>();
-  if (this->decoder->errorInDecoder())
-  {
-    this->logger->addMessage("Error in decoder: " + this->decoder->decoderErrorString(),
-                             LoggingPriority::Error);
-  }
-
   connect(this->fileDownloadManager.get(),
           &FileDownloadManager::onSegmentReadyForDecode,
           this,
           &PlaybackController::onSegmentReadyForDecode);
+
+  connect(this->decoderManager.get(),
+          &DecoderManager::onDecodeOfSegmentDone,
+          this,
+          &PlaybackController::onDecodeOfSegmentDone);
 
   this->logger->addMessage("Playback Controller initialized", LoggingPriority::Info);
 }
@@ -37,4 +36,17 @@ void PlaybackController::openDirectory(QDir path, QString segmentPattern)
   this->fileDownloadManager->openDirectory(path, segmentPattern);
 }
 
-void PlaybackController::onSegmentReadyForDecode() {}
+void PlaybackController::onSegmentReadyForDecode()
+{
+  qDebug() << "onSegmentReadyForDecode";
+  if (!this->decoderManager->isDecodeRunning())
+    if (auto file = this->fileDownloadManager->getNextDownloadedFile())
+      this->decoderManager->decodeFile(file);
+}
+
+void PlaybackController::onDecodeOfSegmentDone()
+{
+  qDebug() << "onDecodeOfSegmentDone";
+  if (auto file = this->fileDownloadManager->getNextDownloadedFile())
+    this->decoderManager->decodeFile(file);
+}
