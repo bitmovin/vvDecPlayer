@@ -26,6 +26,7 @@ class FileDownloader : public QObject
 
 public:
   FileDownloader(ILogger *logger);
+  ~FileDownloader();
 
   void downloadLocalFile(QString pathOrURL);
 

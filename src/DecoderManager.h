@@ -17,6 +17,7 @@ class DecoderManager : public QObject
 
 public:
   DecoderManager(ILogger *logger);
+  ~DecoderManager();
 
   bool isDecodeRunning();
   void decodeFile(std::shared_ptr<File> file);

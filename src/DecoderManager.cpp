@@ -21,9 +21,16 @@ DecoderManager::DecoderManager(ILogger *logger) : logger(logger)
   this->decoderThread = std::thread(&DecoderManager::runDecoder, this);
 }
 
+DecoderManager::~DecoderManager()
+{
+  this->decoderAbort = true;
+  this->decoderCV.notify_one();
+  this->decoderThread.join();
+}
+
 void DecoderManager::decodeFile(std::shared_ptr<File> file)
 {
-  assert(this->currentFile);
+  assert(!this->currentFile);
   qDebug() << "Starting decoding of file " << file->pathOrURL;
 
   std::unique_lock<std::mutex> lck(this->currentFileMutex);

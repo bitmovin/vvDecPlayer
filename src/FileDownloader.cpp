@@ -14,8 +14,20 @@ FileDownloader::FileDownloader(ILogger *logger) : logger(logger)
   this->downloaderThread = std::thread(&FileDownloader::runDownloader, this);
 }
 
+FileDownloader::~FileDownloader()
+{
+  this->downloaderAbort = true;
+  this->downloaderCV.notify_one();
+  this->downloaderThread.join();
+}
+
 void FileDownloader::downloadLocalFile(QString pathOrURL)
 {
+  if (this->currentFile)
+  {
+    int debigagd = 2345;
+    (void)debigagd;
+  }
   assert(!this->currentFile);
 
   QFileInfo fileInfo(pathOrURL);
@@ -69,13 +81,19 @@ void FileDownloader::runDownloader()
       return;
 
     qint64 bytesDownloaded = 0;
-    if (currentFile->isLocalFile)
+    if (this->currentFile->isLocalFile)
     {
-      QFile inputFile(currentFile->pathOrURL);
+      QFile inputFile(this->currentFile->pathOrURL);
       if (!inputFile.open(QIODevice::ReadOnly))
       {
-        this->logger->addMessage(QString("Error reading file %1").arg(currentFile->pathOrURL),
+        this->logger->addMessage(QString("Error reading file %1").arg(this->currentFile->pathOrURL),
                                  LoggingPriority::Error);
+      }
+      else if (!this->currentFile->localFile.open())
+      {
+        this->logger->addMessage(
+            QString("Error opening temporary file %1").arg(this->currentFile->localFile.fileName()),
+            LoggingPriority::Error);
       }
       else
       {
@@ -85,19 +103,19 @@ void FileDownloader::runDownloader()
           if (bytesRead < 0)
           {
             this->logger->addMessage(
-                QString("Error while reading from file %1").arg(currentFile->pathOrURL),
+                QString("Error while reading from file %1").arg(this->currentFile->pathOrURL),
                 LoggingPriority::Error);
             break;
           }
-          currentFile->localFile.write(this->readBuffer, bytesRead);
+          this->currentFile->localFile.write(this->readBuffer, bytesRead);
           if (bytesRead < READ_SIZE)
             break;
 
           bytesDownloaded += bytesRead;
-          if (currentFile->nrBytes > 0)
+          if (this->currentFile->nrBytes > 0)
           {
-            auto newPercent = double(bytesDownloaded) / double(currentFile->nrBytes);
-            currentFile->downloadProgress.store(newPercent);
+            auto newPercent = double(bytesDownloaded) / double(this->currentFile->nrBytes);
+            this->currentFile->downloadProgress.store(newPercent);
           }
 
           if (this->downloaderAbort)
@@ -106,11 +124,14 @@ void FileDownloader::runDownloader()
       }
     }
 
-    currentFile->downloadProgress.store(100.0);
-    emit downloadDone();
+    {
+      std::unique_lock<std::mutex> lckQueue(this->downloadQueueDoneMutex);
+      std::unique_lock<std::mutex> lckFile(this->currentFileMutex);
+      this->currentFile->downloadProgress.store(100.0);
+      this->downloadQueueDone.push(this->currentFile);
+      this->currentFile.reset();
+    }
 
-    std::unique_lock<std::mutex> lck(this->downloadQueueDoneMutex);
-    this->downloadQueueDone.push(currentFile);
-    currentFile.reset();
+    emit downloadDone();
   }
 }

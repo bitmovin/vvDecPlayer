@@ -59,7 +59,8 @@ void FileDownloadManager::onDownloadDone()
 {
   emit onSegmentReadyForDecode();
 
-  if (this->fileDownloader->nrFilesInDownloadedQueue() < MAX_FILES_IN_QUEUE)
+  if (!this->fileDownloader->isDownloadRunning() &&
+      this->fileDownloader->nrFilesInDownloadedQueue() < MAX_FILES_IN_QUEUE)
     this->startDownloadOfNextFile();
 }
 
