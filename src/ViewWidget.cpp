@@ -133,9 +133,9 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
   painter.setBrush(Qt::white);
   painter.drawRect(graphRect);
 
-  constexpr unsigned blockDistance = 5 + 2;
+  constexpr unsigned blockDistance = 3 + 1;
   QRect frameRect;
-  frameRect.setSize(QSize(5, 5));
+  frameRect.setSize(QSize(3, 3));
   frameRect.moveBottom(graphRect.bottom() - 5);
 
   const auto colorMap =
@@ -158,6 +158,31 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
     painter.setBrush(colorMap.at(info[i].frameState));
 
     painter.drawRect(frameRect);
+  }
+
+  // Next the graph
+  auto segmentData = this->playbackController->getLastSegmentsData();
+
+  painter.setPen(Qt::black);
+  painter.setBrush(Qt::cyan);
+
+  QRect segmentRect;
+  segmentRect.setWidth(blockDistance * 24);
+  
+  auto nrSegmentsToDraw = (info.size() + 23) / 24;
+  auto segmentIt = segmentData.rbegin();
+  for (size_t i = 0; i < nrSegmentsToDraw; i++)
+  {
+    segmentRect.setHeight(int(segmentIt->bitrate) / 1000);
+    segmentRect.moveBottom(graphRect.bottom() - 15);
+    auto xOffset = ((nrSegmentsToDraw - i) * 24 - this->frameSegmentOffset) * blockDistance;
+    segmentRect.moveLeft(int(xOffset));
+
+    painter.drawRect(segmentRect);
+
+    segmentIt++;
+    if (segmentIt == segmentData.rend())
+      break;
   }
 }
 
@@ -213,6 +238,10 @@ void ViewWidget::timerEvent(QTimerEvent *event)
     this->timerLastFPSTime = QTime::currentTime();
     this->timerFPSCounter  = 0;
   }
+
+  this->frameSegmentOffset++;
+  if (this->frameSegmentOffset > 24)
+    this->frameSegmentOffset = 0;
 
   this->update();
 }

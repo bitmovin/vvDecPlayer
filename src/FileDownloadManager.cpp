@@ -69,6 +69,11 @@ void FileDownloadManager::addFrameQueueInfo(std::vector<FrameStatus> &info)
   this->fileDownloader->addFrameQueueInfo(info);
 }
 
+auto FileDownloadManager::getLastSegmentsData() -> std::deque<SegmentData>
+{
+  return this->fileDownloader->getLastSegmentsData();
+}
+
 void FileDownloadManager::setSegmentLength(unsigned segmentLength)
 {
   this->fileDownloader->setSegmentLength(segmentLength);

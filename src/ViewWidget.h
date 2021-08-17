@@ -52,6 +52,8 @@ private:
   PlaybackController *playbackController{};
   QImage              currentImage;
 
+  unsigned frameSegmentOffset{};
+
   bool showDebugInfo{false};
   bool showProgressGraph{false};
 };

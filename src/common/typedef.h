@@ -1,5 +1,5 @@
 /*  Copyright: Christian Feldmann (christian.feldmann@bitmovin.com)
-*/
+ */
 
 #pragma once
 
@@ -55,7 +55,6 @@ enum class RawFormat
   RGB
 };
 
-
 struct Offset
 {
   Offset(int x, int y) : x(x), y(y) {}
@@ -81,7 +80,8 @@ QImage::Format pixmapImageFormat();
 inline QImage::Format platformImageFormat()
 {
   // see https://code.woboq.org/qt5/qtbase/src/gui/image/qpixmap_raster.cpp.html#97
-  // see https://code.woboq.org/data/symbol.html?root=../qt5/&ref=_ZN21QRasterPlatformPixmap18systemOpaqueFormatEv
+  // see
+  // https://code.woboq.org/data/symbol.html?root=../qt5/&ref=_ZN21QRasterPlatformPixmap18systemOpaqueFormatEv
   if (is_Q_OS_MAC)
     // https://code.woboq.org/qt5/qtbase/src/plugins/platforms/cocoa/qcocoaintegration.mm.html#117
     // https://code.woboq.org/data/symbol.html?root=../qt5/&ref=_ZN12QCocoaScreen14updateGeometryEv
@@ -91,20 +91,27 @@ inline QImage::Format platformImageFormat()
     // https://code.woboq.org/qt5/qtbase/src/plugins/platforms/windows/qwindowsscreen.cpp.html#59
     // https://code.woboq.org/data/symbol.html?root=../qt5/&ref=_ZN18QWindowsScreenDataC1Ev
     // Qt Docs:
-    // The image is stored using a premultiplied 32-bit ARGB format (0xAARRGGBB), i.e. the red, green, and blue channels 
-    // are multiplied by the alpha component divided by 255. (If RR, GG, or BB has a higher value than the alpha channel, 
-    // the results are undefined.) Certain operations (such as image composition using alpha blending) are faster using 
-    // premultiplied ARGB32 than with plain ARGB32.
+    // The image is stored using a premultiplied 32-bit ARGB format (0xAARRGGBB), i.e. the red,
+    // green, and blue channels are multiplied by the alpha component divided by 255. (If RR, GG, or
+    // BB has a higher value than the alpha channel, the results are undefined.) Certain operations
+    // (such as image composition using alpha blending) are faster using premultiplied ARGB32 than
+    // with plain ARGB32.
     return QImage::Format_ARGB32_Premultiplied;
   // Fall back on Linux and other platforms.
   return pixmapImageFormat();
 }
 
-template<typename T>
-unsigned clipToUnsigned(T val)
+template <typename T> unsigned clipToUnsigned(T val)
 {
   static_assert(std::is_signed<T>::value, "T must must be a signed type");
   if (val < 0)
     return 0;
   return unsigned(val);
 }
+
+struct SegmentData
+{
+  SegmentData(size_t bitrate) : bitrate(bitrate) {}
+  size_t bitrate{};
+  double progressPercent{};
+};

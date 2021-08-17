@@ -8,6 +8,7 @@
 
 #include <QDir>
 #include <QObject>
+#include <deque>
 
 class FileDownloadManager : public QObject
 {
@@ -22,7 +23,8 @@ public:
   bool                  isDownloadRunning() { return this->fileDownloader->isDownloadRunning(); }
 
   QString getStatus();
-  void addFrameQueueInfo(std::vector<FrameStatus> &info);
+  void    addFrameQueueInfo(std::vector<FrameStatus> &info);
+  auto    getLastSegmentsData() -> std::deque<SegmentData>;
 
 signals:
   void onSegmentReadyForDecode();

@@ -69,6 +69,11 @@ std::vector<FrameStatus> PlaybackController::getFrameQueueInfo()
   return info;
 }
 
+auto PlaybackController::getLastSegmentsData() -> std::deque<SegmentData>
+{
+  return this->fileDownloadManager->getLastSegmentsData();
+}
+
 void PlaybackController::onSegmentReadyForDecode()
 {
   if (!this->decoderManager->isDecodeRunning())

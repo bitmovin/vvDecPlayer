@@ -25,9 +25,10 @@ public:
   void openDirectory(QDir path, QString segmentPattern);
 
   FrameConversionBuffer *getFrameConversionBuffer() { return this->frameConversionBuffer.get(); }
-  
+
   QString getStatus();
-  std::vector<FrameStatus> getFrameQueueInfo();
+  auto    getFrameQueueInfo() -> std::vector<FrameStatus>;
+  auto    getLastSegmentsData() -> std::deque<SegmentData>;
 
 public slots:
   void onSegmentReadyForDecode();

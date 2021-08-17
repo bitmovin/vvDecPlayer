@@ -6,13 +6,15 @@
 #include "ILogger.h"
 #include <common/File.h>
 #include <common/RawFrame.h>
+#include <common/typedef.h>
 
 #include <QByteArray>
 #include <QObject>
 #include <memory>
 #include <mutex>
-#include <queue>
 #include <thread>
+#include <deque>
+#include <queue>
 
 /* A background downloader for files.
  *
@@ -36,9 +38,10 @@ public:
   std::size_t           nrFilesInDownloadedQueue();
   bool                  isDownloadRunning();
 
-  void setSegmentLength(unsigned segmentLength) { this->segmentLength = segmentLength; }
+  void    setSegmentLength(unsigned segmentLength) { this->segmentLength = segmentLength; }
   QString getStatus();
-  void addFrameQueueInfo(std::vector<FrameStatus> &info);
+  void    addFrameQueueInfo(std::vector<FrameStatus> &info);
+  auto    getLastSegmentsData() -> std::deque<SegmentData> { return this->lastSegments; }
 
 signals:
 
@@ -57,6 +60,8 @@ private:
   std::thread             downloaderThread;
   std::condition_variable downloaderCV;
   bool                    downloaderAbort{false};
+
+  std::deque<SegmentData> lastSegments;
 
   unsigned segmentLength{24};
 };
