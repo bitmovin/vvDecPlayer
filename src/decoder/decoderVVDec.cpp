@@ -12,7 +12,7 @@
 
 // Debug the decoder ( 0:off 1:interactive deocder only 2:caching decoder only 3:both)
 #define decoderVVDec_DEBUG_OUTPUT 0
-#if decoderVVDec_DEBUG_OUTPUT && !NDEBUG
+#if decoderVVDec_DEBUG_OUTPUT
 #include <QDebug>
 #define DEBUG_vvdec qDebug
 #else

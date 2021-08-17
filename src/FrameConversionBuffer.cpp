@@ -24,22 +24,31 @@ FrameConversionBuffer::FrameConversionBuffer()
   this->conversionThread = std::thread(&FrameConversionBuffer::runConversion, this);
 }
 
-FrameConversionBuffer::~FrameConversionBuffer()
+FrameConversionBuffer::~FrameConversionBuffer() { this->abort(); }
+
+void FrameConversionBuffer::abort()
 {
   this->conversionAbort = true;
-  this->conversionCV.notify_one();
-  this->bufferFullCV.notify_one();
-  this->conversionThread.join();
+  if (this->conversionThread.joinable())
+  {
+    this->conversionCV.notify_one();
+    this->bufferFullCV.notify_one();
+    this->conversionThread.join();
+  }
 }
 
 void FrameConversionBuffer::addFrameToConversion(RawYUVFrame frame)
 {
-  DEBUG("Adding frame to queue. Queue size " << this->framesToConvert.size());
-
+  DEBUG("Conversion: Adding frame to queue. Queue size " << this->framesToConvert.size());
   std::unique_lock<std::mutex> lck(this->framesToConvertMutex);
-  this->bufferFullCV.wait(lck, [this]() {
-    return this->framesToConvert.size() < MAX_QUEUE_SIZE || this->conversionAbort;
-  });
+  if (!(this->framesToConvert.size() < MAX_QUEUE_SIZE || this->conversionAbort))
+  {
+    DEBUG("Conversion: Waiting for space in queue");
+    this->bufferFullCV.wait(lck, [this]() {
+      return this->framesToConvert.size() < MAX_QUEUE_SIZE || this->conversionAbort;
+    });
+    DEBUG("Conversion: Space in queue. Pusing frame.");
+  }
 
   this->framesToConvert.push(frame);
   this->conversionCV.notify_one();
@@ -52,7 +61,18 @@ std::optional<QImage> FrameConversionBuffer::getNextImage()
     return {};
   auto nextFrame = this->convertedFrames.front();
   this->convertedFrames.pop();
+  this->conversionCV.notify_one();
   return nextFrame;
+}
+
+QString FrameConversionBuffer::getStatus()
+{
+  if (this->conversionAbort)
+    return "Conversion: Aborted";
+  return QString("Conversion: YUV buffer %1 - RGB buffer %2 - %3")
+      .arg(this->framesToConvert.size())
+      .arg(this->convertedFrames.size())
+      .arg(this->conversionRunning.load() ? "Conversion Running" : "Conversion Paused");
 }
 
 void FrameConversionBuffer::runConversion()
@@ -62,11 +82,13 @@ void FrameConversionBuffer::runConversion()
   {
     RawYUVFrame currentFrame;
     {
+      this->conversionRunning.store(false);
       std::unique_lock<std::mutex> lck(this->framesToConvertMutex);
       this->conversionCV.wait(lck, [this]() {
         return (!this->framesToConvert.empty() && this->convertedFrames.size() < MAX_QUEUE_SIZE) ||
                this->conversionAbort;
       });
+      this->conversionRunning.store(true);
 
       if (this->conversionAbort)
         return;
@@ -76,12 +98,14 @@ void FrameConversionBuffer::runConversion()
       this->bufferFullCV.notify_one();
     }
 
-    DEBUG("Converting frame " << frameCounter);
+    DEBUG("Conversion Thread: Convert Frame " << frameCounter);
     QImage outputImage;
     convertYUVToImage(
         currentFrame.rawData, outputImage, currentFrame.pixelFormat, currentFrame.frameSize);
+    DEBUG("Conversion Thread: Push output");
     std::unique_lock<std::mutex> lck(this->convertedFramesMutex);
     this->convertedFrames.push(outputImage);
+    DEBUG("Conversion Thread: Frame " << frameCounter << " done.");
     frameCounter++;
   }
 }

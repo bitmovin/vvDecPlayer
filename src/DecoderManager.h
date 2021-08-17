@@ -4,13 +4,14 @@
 #pragma once
 
 #include "ILogger.h"
+#include <FrameConversionBuffer.h>
+#include <QObject>
 #include <common/File.h>
 #include <condition_variable>
 #include <decoder/decoderBase.h>
-#include <thread>
 #include <optional>
-#include <QObject>
-#include <FrameConversionBuffer.h>
+#include <thread>
+
 
 class DecoderManager : public QObject
 {
@@ -19,15 +20,18 @@ class DecoderManager : public QObject
 public:
   DecoderManager(ILogger *logger, FrameConversionBuffer *frameConversionBuffer);
   ~DecoderManager();
+  void abort();
 
   bool isDecodeRunning();
   void decodeFile(std::shared_ptr<File> file);
+
+  QString getStatus();
 
 signals:
   void onDecodeOfSegmentDone();
 
 private:
-  ILogger *logger{};
+  ILogger *              logger{};
   FrameConversionBuffer *frameConversionBuffer{};
 
   void runDecoder();
@@ -43,4 +47,14 @@ private:
   std::thread             decoderThread;
   std::condition_variable decoderCV;
   bool                    decoderAbort{false};
+
+  size_t currentDecodeFrame{};
+
+  enum class DecoderState
+  {
+    Running,
+    WaitingToPushOutput,
+    WaitingForNextFile
+  };
+  DecoderState decoderState{DecoderState::Running};
 };

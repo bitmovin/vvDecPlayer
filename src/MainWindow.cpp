@@ -18,8 +18,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
   this->createMenusAndActions();
 
   this->playbackController = std::make_unique<PlaybackController>(this->ui.viewWidget);
-  this->ui.viewWidget->setFrameConversionBuffer(
-      this->playbackController->getFrameConversionBuffer());
+  this->ui.viewWidget->setPlaybackController(this->playbackController.get());
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
@@ -33,7 +32,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
   {
     if (isFullScreen())
     {
-
       this->actionFullScreen.trigger();
       return;
     }

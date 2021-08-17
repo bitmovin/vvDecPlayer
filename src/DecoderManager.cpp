@@ -37,11 +37,16 @@ DecoderManager::DecoderManager(ILogger *logger, FrameConversionBuffer *frameConv
   this->decoderThread = std::thread(&DecoderManager::runDecoder, this);
 }
 
-DecoderManager::~DecoderManager()
+DecoderManager::~DecoderManager() { this->abort(); }
+
+void DecoderManager::abort()
 {
   this->decoderAbort = true;
-  this->decoderCV.notify_one();
-  this->decoderThread.join();
+  if (this->decoderThread.joinable())
+  {
+    this->decoderCV.notify_one();
+    this->decoderThread.join();
+  }
 }
 
 void DecoderManager::decodeFile(std::shared_ptr<File> file)
@@ -54,6 +59,17 @@ void DecoderManager::decodeFile(std::shared_ptr<File> file)
   this->decoderCV.notify_one();
 }
 
+QString DecoderManager::getStatus()
+{
+  if (this->decoderState == DecoderState::Running)
+    return QString("Decoder: Decoding file. Frame %1").arg(this->currentDecodeFrame);
+  else if (this->decoderState == DecoderState::WaitingForNextFile)
+    return "Decoder: Waiting for next file to decode.";
+  else if (this->decoderState == DecoderState::WaitingToPushOutput)
+    return QString("Decoder: Decoding file. Frame %1 - pushing out").arg(this->currentDecodeFrame);
+  return {"Decoder: "};
+}
+
 bool DecoderManager::isDecodeRunning() { return bool(this->currentFile); }
 
 void DecoderManager::runDecoder()
@@ -64,9 +80,12 @@ void DecoderManager::runDecoder()
   {
     {
       std::unique_lock<std::mutex> lck(this->currentFileMutex);
-      if (!this->currentFile)
+      if (!this->currentFile && !this->decoderAbort)
       {
+        DEBUG("Decoder Waiting for next file");
+        this->decoderState = DecoderState::WaitingForNextFile;
         this->decoderCV.wait(lck, [this]() { return this->currentFile || this->decoderAbort; });
+        this->decoderState = DecoderState::Running;
       }
 
       if (this->decoderAbort)
@@ -79,7 +98,7 @@ void DecoderManager::runDecoder()
     // using namespace std::chrono_literals;
     // std::this_thread::sleep_for(1000ms);
 
-    unsigned nrFramesDecoded = 0;
+    this->currentDecodeFrame = 0;
     if (auto firstPos = this->findNextNalInCurFile(0))
       this->currentDataOffset = *firstPos;
     while (true)
@@ -96,6 +115,7 @@ void DecoderManager::runDecoder()
           this->currentDataOffset = *nextNalStart;
         }
 
+        DEBUG("Pushing " << nalData.size() << " bytes");
         if (!this->decoder->pushData(nalData))
         {
           this->logger->addMessage("Error pushing data", LoggingPriority::Error);
@@ -105,29 +125,35 @@ void DecoderManager::runDecoder()
 
       if (state == decoder::DecoderState::RetrieveFrames)
       {
+        DEBUG("Checking for next frame ");
         if (this->decoder->decodeNextFrame())
         {
           RawYUVFrame newFrame;
           newFrame.rawData     = this->decoder->getRawFrameData();
           newFrame.pixelFormat = this->decoder->getYUVPixelFormat();
           newFrame.frameSize   = this->decoder->getFrameSize();
+          
+          this->decoderState = DecoderState::WaitingToPushOutput;
           this->frameConversionBuffer->addFrameToConversion(newFrame);
+          this->decoderState = DecoderState::Running;
 
-          DEBUG("Retrived frame " << nrFramesDecoded << " with size " << newFrame.frameSize.width
-                                  << "x" << newFrame.frameSize.height);
-          nrFramesDecoded++;
+          DEBUG("Retrived frame " << this->currentDecodeFrame << " with size "
+                                  << newFrame.frameSize.width << "x" << newFrame.frameSize.height);
+          this->currentDecodeFrame++;
         }
       }
 
       if (state == decoder::DecoderState::Error)
       {
-        this->logger->addMessage(QString("Error decoding frame %1").arg(nrFramesDecoded),
+        DEBUG("Decoding error");
+        this->logger->addMessage(QString("Error decoding frame %1").arg(this->currentDecodeFrame),
                                  LoggingPriority::Error);
-                                 break;
+        break;
       }
 
       if (state == decoder::DecoderState::EndOfBitstream)
       {
+        DEBUG("Decoding EOF");
         break;
       }
     }
@@ -137,6 +163,7 @@ void DecoderManager::runDecoder()
 
     this->currentFile.reset();
     emit onDecodeOfSegmentDone();
+    DEBUG("Decoding of segment done");
 
     this->decoder->resetDecoder();
   }

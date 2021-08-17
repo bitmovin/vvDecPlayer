@@ -16,11 +16,14 @@ class FrameConversionBuffer
 public:
   FrameConversionBuffer();
   ~FrameConversionBuffer();
+  void abort();
 
   // May block if the queue is too full
   void addFrameToConversion(RawYUVFrame frame);
 
   std::optional<QImage> getNextImage();
+
+  QString getStatus();
 
 private:
   void runConversion();
@@ -35,4 +38,6 @@ private:
   std::queue<QImage>      convertedFrames;
   std::mutex              framesToConvertMutex;
   std::mutex              convertedFramesMutex;
+
+  std::atomic_bool conversionRunning{false};
 };

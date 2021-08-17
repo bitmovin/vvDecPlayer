@@ -15,10 +15,13 @@ class FileDownloadManager : public QObject
 
 public:
   FileDownloadManager(ILogger *logger);
+  void abort();
 
   void                  openDirectory(QDir path, QString segmentPattern);
   std::shared_ptr<File> getNextDownloadedFile();
   bool                  isDownloadRunning() { return this->fileDownloader->isDownloadRunning(); }
+
+  QString getStatus();
 
 signals:
   void onSegmentReadyForDecode();

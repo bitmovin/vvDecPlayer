@@ -27,12 +27,15 @@ class FileDownloader : public QObject
 public:
   FileDownloader(ILogger *logger);
   ~FileDownloader();
+  void abort();
 
   void downloadLocalFile(QString pathOrURL);
 
   std::shared_ptr<File> getNextDownloadedFile();
   std::size_t           nrFilesInDownloadedQueue();
   bool                  isDownloadRunning();
+
+  QString getStatus();
 
 signals:
 

@@ -6,16 +6,29 @@
 #include <QDebug>
 #include <QFileInfo>
 
+#define DEBUG_DOWNLOADER 0
+#if DEBUG_DOWNLOADER
+#include <QDebug>
+#define DEBUG(f) qDebug() << f
+#else
+#define DEBUG(f) ((void)0)
+#endif
+
 FileDownloader::FileDownloader(ILogger *logger) : logger(logger)
 {
   this->downloaderThread = std::thread(&FileDownloader::runDownloader, this);
 }
 
-FileDownloader::~FileDownloader()
+FileDownloader::~FileDownloader() { this->abort(); }
+
+void FileDownloader::abort()
 {
   this->downloaderAbort = true;
-  this->downloaderCV.notify_one();
-  this->downloaderThread.join();
+  if (this->downloaderThread.joinable())
+  {
+    this->downloaderCV.notify_one();
+    this->downloaderThread.join();
+  }
 }
 
 void FileDownloader::downloadLocalFile(QString pathOrURL)
@@ -29,7 +42,7 @@ void FileDownloader::downloadLocalFile(QString pathOrURL)
   f->isLocalFile = true;
   f->nrBytes     = std::size_t(fileInfo.size());
 
-  qDebug() << "Starting download of file " << pathOrURL;
+  DEBUG("Starting download of file " << pathOrURL);
 
   std::scoped_lock lock(this->currentFileMutex);
   this->currentFile = f;
@@ -50,6 +63,21 @@ std::size_t FileDownloader::nrFilesInDownloadedQueue() { return this->downloadQu
 
 bool FileDownloader::isDownloadRunning() { return bool(this->currentFile); }
 
+QString FileDownloader::getStatus()
+{
+  std::unique_lock<std::mutex> lckFile(this->currentFileMutex);
+  QString status = "Downloader: ";
+  if (this->currentFile)
+  {
+    auto percent = int(this->currentFile->downloadProgress.load());
+    status += QString("Downloading progress %d%%").arg(percent);
+  }
+  else
+    status += "Waiting for next file";
+  status += QString(" - out %1").arg(this->downloadQueueDone.size());
+  return status;
+}
+
 void FileDownloader::runDownloader()
 {
   this->logger->addMessage("Started downloader thread", LoggingPriority::Info);
@@ -58,10 +86,7 @@ void FileDownloader::runDownloader()
   {
     {
       std::unique_lock<std::mutex> lck(this->currentFileMutex);
-      if (!this->currentFile)
-      {
-        this->downloaderCV.wait(lck, [this]() { return this->currentFile || this->downloaderAbort; });
-      }
+      this->downloaderCV.wait(lck, [this]() { return this->currentFile || this->downloaderAbort; });
 
       if (this->downloaderAbort)
         return;
@@ -91,6 +116,7 @@ void FileDownloader::runDownloader()
       this->currentFile.reset();
     }
 
+    DEBUG("Download done");
     emit downloadDone();
   }
 }

@@ -6,10 +6,18 @@
 #include <QDebug>
 #include <decoder/decoderVVDec.h>
 
-PlaybackController::PlaybackController(ILogger *logger) : logger(logger)
+PlaybackController::PlaybackController(ILogger *logger)
+    : logger(logger)
 {
   assert(logger != nullptr);
   this->reset();
+}
+
+PlaybackController::~PlaybackController()
+{
+  this->frameConversionBuffer->abort();
+  this->decoderManager->abort();
+  this->fileDownloadManager->abort();
 }
 
 void PlaybackController::reset()
@@ -39,9 +47,17 @@ void PlaybackController::openDirectory(QDir path, QString segmentPattern)
   this->fileDownloadManager->openDirectory(path, segmentPattern);
 }
 
+QString PlaybackController::getStatus()
+{
+  QString status;
+  status += this->fileDownloadManager->getStatus() + "\n";
+  status += this->decoderManager->getStatus() + "\n";
+  status += this->frameConversionBuffer->getStatus() + "\n";
+  return status;
+}
+
 void PlaybackController::onSegmentReadyForDecode()
 {
-  qDebug() << "onSegmentReadyForDecode";
   if (!this->decoderManager->isDecodeRunning())
     if (auto file = this->fileDownloadManager->getNextDownloadedFile())
       this->decoderManager->decodeFile(file);
@@ -49,7 +65,6 @@ void PlaybackController::onSegmentReadyForDecode()
 
 void PlaybackController::onDecodeOfSegmentDone()
 {
-  qDebug() << "onDecodeOfSegmentDone";
   if (auto file = this->fileDownloadManager->getNextDownloadedFile())
     this->decoderManager->decodeFile(file);
 }

@@ -20,6 +20,11 @@ FileDownloadManager::FileDownloadManager(ILogger *logger) : logger(logger)
           &FileDownloadManager::onDownloadDone);
 }
 
+void FileDownloadManager::abort()
+{
+  this->fileDownloader->abort();
+}
+
 void FileDownloadManager::openDirectory(QDir path, QString segmentPattern)
 {
   unsigned segmentNr = 0;
@@ -53,6 +58,13 @@ std::shared_ptr<File> FileDownloadManager::getNextDownloadedFile()
       this->fileDownloader->nrFilesInDownloadedQueue() < MAX_FILES_IN_QUEUE)
     this->startDownloadOfNextFile();
   return file;
+}
+
+QString FileDownloadManager::getStatus()
+{
+  if (this->fileDownloader)
+    return this->fileDownloader->getStatus();
+  return {};
 }
 
 void FileDownloadManager::onDownloadDone()

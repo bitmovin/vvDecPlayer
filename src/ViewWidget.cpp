@@ -6,7 +6,7 @@
 #include <QPainter>
 #include <QTimerEvent>
 
-#define DEBUG_WIDGET 1
+#define DEBUG_WIDGET 0
 #if DEBUG_WIDGET
 #include <QDebug>
 #define DEBUG(f) qDebug() << f
@@ -28,10 +28,10 @@ ViewWidget::ViewWidget(QWidget *parent) : QWidget(parent)
   timer.start(timerInterval, Qt::PreciseTimer, this);
 }
 
-void ViewWidget::setFrameConversionBuffer(FrameConversionBuffer *frameConversionBuffer)
+void ViewWidget::setPlaybackController(PlaybackController *playbackController)
 {
-  assert(frameConversionBuffer != nullptr);
-  this->frameConversionBuffer = frameConversionBuffer;
+  assert(playbackController != nullptr);
+  this->playbackController = playbackController;
 }
 
 void ViewWidget::addMessage(QString message, LoggingPriority priority)
@@ -57,8 +57,8 @@ void ViewWidget::paintEvent(QPaintEvent *)
     painter.drawImage(0, 0, this->currentImage);
   }
 
-  this->drawFps(painter);
   this->drawAndUpdateMessages(painter);
+  this->drawFPSAndStatusText(painter);
 }
 
 void ViewWidget::drawAndUpdateMessages(QPainter &painter)
@@ -99,9 +99,11 @@ void ViewWidget::drawAndUpdateMessages(QPainter &painter)
   }
 }
 
-void ViewWidget::drawFps(QPainter &painter)
+void ViewWidget::drawFPSAndStatusText(QPainter &painter)
 {
-  auto text     = QString("%1").arg(this->currentFps);
+  auto text = QString("FPS: %1\n").arg(this->currentFps);
+  if (this->playbackController)
+    text += this->playbackController->getStatus();
   auto textSize = QFontMetrics(painter.font()).size(0, text);
 
   QRect textRect;
@@ -122,10 +124,13 @@ void ViewWidget::timerEvent(QTimerEvent *event)
 {
   if (event && event->timerId() != timer.timerId())
     return QWidget::timerEvent(event);
-  if (this->frameConversionBuffer == nullptr)
+  if (this->playbackController == nullptr)
+    return;
+  auto frameBuffer = this->playbackController->getFrameConversionBuffer();
+  if (frameBuffer == nullptr)
     return;
 
-  if (auto nextImage = this->frameConversionBuffer->getNextImage())
+  if (auto nextImage = frameBuffer->getNextImage())
   {
     DEBUG("Timer even. Got next image");
     this->currentImage = *nextImage;

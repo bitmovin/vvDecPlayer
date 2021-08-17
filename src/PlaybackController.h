@@ -17,12 +17,15 @@ class PlaybackController : public QObject
 
 public:
   PlaybackController(ILogger *logger);
+  ~PlaybackController();
 
   void reset();
 
   void openDirectory(QDir path, QString segmentPattern);
 
   FrameConversionBuffer *getFrameConversionBuffer() { return this->frameConversionBuffer.get(); }
+  
+  QString getStatus();
 
 public slots:
   void onSegmentReadyForDecode();

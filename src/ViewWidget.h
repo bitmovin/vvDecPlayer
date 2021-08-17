@@ -5,7 +5,7 @@
 
 #include "ILogger.h"
 
-#include "FrameConversionBuffer.h"
+#include "PlaybackController.h"
 #include <QBasicTimer>
 #include <QImage>
 #include <QTime>
@@ -20,7 +20,7 @@ class ViewWidget : public QWidget, public ILogger
 public:
   ViewWidget(QWidget *parent);
 
-  void setFrameConversionBuffer(FrameConversionBuffer *frameConversionBuffer);
+  void setPlaybackController(PlaybackController *playbackController);
 
   void addMessage(QString message, LoggingPriority priority) override;
   void clearMessages() override;
@@ -38,7 +38,7 @@ private:
   std::mutex                     messagesMutex;
 
   void drawAndUpdateMessages(QPainter &painter);
-  void drawFps(QPainter &painter);
+  void drawFPSAndStatusText(QPainter &painter);
 
   QBasicTimer  timer;
   int          timerFPSCounter{};
@@ -46,6 +46,6 @@ private:
   double       currentFps{};
   virtual void timerEvent(QTimerEvent *event) override;
 
-  FrameConversionBuffer *frameConversionBuffer{};
-  QImage                 currentImage;
+  PlaybackController *playbackController{};
+  QImage              currentImage;
 };
