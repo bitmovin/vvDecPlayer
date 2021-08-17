@@ -44,6 +44,10 @@ void FileDownloader::downloadLocalFile(QString pathOrURL)
 
   DEBUG("Starting download of file " << pathOrURL);
 
+  this->lastSegments.push_back(SegmentData(f->nrBytes * 8));
+  if (this->lastSegments.size() > 5)
+    this->lastSegments.pop_front();
+
   std::scoped_lock lock(this->currentFileMutex);
   this->currentFile = f;
   this->downloaderCV.notify_one();
@@ -81,6 +85,11 @@ QString FileDownloader::getStatus()
 void FileDownloader::addFrameQueueInfo(std::vector<FrameStatus> &info)
 {
   std::unique_lock<std::mutex> lck(this->currentFileMutex);
+  for (size_t i = 0; i < this->downloadQueueDone.size(); i++)
+  {
+    for (unsigned i = 0; i < this->segmentLength; i++)
+      info.push_back(FrameStatus(FrameState::Downloaded));
+  }
   if (this->currentFile)
   {
     auto nrFramesDownloaded = int(this->segmentLength * this->currentFile->downloadProgress.load() / 100.0);
