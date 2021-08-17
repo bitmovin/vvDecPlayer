@@ -70,6 +70,18 @@ QString DecoderManager::getStatus()
   return {"Decoder: "};
 }
 
+void DecoderManager::addFrameQueueInfo(std::vector<FrameStatus> &info)
+{
+  if (this->decoderState == DecoderState::WaitingToPushOutput ||
+      this->decoderState == DecoderState::Running)
+  {
+    auto framesToDecodeInSegment = this->segmentLength - this->currentDecodeFrame;
+    if (framesToDecodeInSegment > 0)
+      for (size_t i = 0; i < framesToDecodeInSegment; i++)
+        info.push_back(FrameStatus(FrameState::Downloaded));
+  }
+}
+
 bool DecoderManager::isDecodeRunning() { return bool(this->currentFile); }
 
 void DecoderManager::runDecoder()
@@ -132,7 +144,7 @@ void DecoderManager::runDecoder()
           newFrame.rawData     = this->decoder->getRawFrameData();
           newFrame.pixelFormat = this->decoder->getYUVPixelFormat();
           newFrame.frameSize   = this->decoder->getFrameSize();
-          
+
           this->decoderState = DecoderState::WaitingToPushOutput;
           this->frameConversionBuffer->addFrameToConversion(newFrame);
           this->decoderState = DecoderState::Running;
@@ -164,6 +176,15 @@ void DecoderManager::runDecoder()
     this->currentFile.reset();
     emit onDecodeOfSegmentDone();
     DEBUG("Decoding of segment done");
+
+    if (this->segmentLength != this->currentDecodeFrame)
+    {
+      this->logger->addMessage(
+          QString("Detected new segment length of %1 frames").arg(this->segmentLength),
+          LoggingPriority::Info);
+      this->segmentLength = unsigned(this->currentDecodeFrame);
+      emit onSegmentLengthUpdate(this->segmentLength);
+    }
 
     this->decoder->resetDecoder();
   }

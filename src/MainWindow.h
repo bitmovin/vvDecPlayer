@@ -33,7 +33,9 @@ protected:
 private slots:
 
   void openLocalFolder();
-  void toggleFullscreen();
+  void toggleFullscreen(bool checked);
+  void toggleShowDebug(bool checked);
+  void toggleShowProgressGraph(bool checked);
   void onSelectVVDeCLibrary();
 
 private:
@@ -44,6 +46,8 @@ private:
 private:
   void                         createMenusAndActions();
   QAction                      actionFullScreen;
+  QAction                      actionShowThreadStatus;
+  QAction                      actionShowProgressGraph;
   QScopedPointer<QActionGroup> actionGroup;
 
   bool wasMaximizedBeforeFullScreen{false};

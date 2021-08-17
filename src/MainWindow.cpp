@@ -41,6 +41,16 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     this->actionFullScreen.trigger();
     return;
   }
+  else if (key == Qt::Key_D && controlOnly)
+  {
+    this->actionShowThreadStatus.trigger();
+    return;
+  }
+  else if (key == Qt::Key_P && controlOnly)
+  {
+    this->actionShowProgressGraph.trigger();
+    return;
+  }
   else if (key == Qt::Key_Space)
   {
     // ui.playbackController->on_playPauseButton_clicked();
@@ -50,7 +60,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
   QWidget::keyPressEvent(event);
 }
 
-void MainWindow::toggleFullscreen()
+void MainWindow::toggleFullscreen(bool)
 {
   // Single window mode. Hide/show all panels and set/restore the main window
   // to/from fullscreen.
@@ -90,6 +100,13 @@ void MainWindow::toggleFullscreen()
   }
 }
 
+void MainWindow::toggleShowDebug(bool checked) { this->ui.viewWidget->setShowDebugInfo(checked); }
+
+void MainWindow::toggleShowProgressGraph(bool checked)
+{
+  this->ui.viewWidget->setShowProgressGraph(checked);
+}
+
 void MainWindow::createMenusAndActions()
 {
   QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
@@ -105,7 +122,7 @@ void MainWindow::createMenusAndActions()
                                          QActionGroup *actionGroup,
                                          QString       text,
                                          bool          checked,
-                                         void (MainWindow::*func)(),
+                                         void (MainWindow::*func)(bool),
                                          const QKeySequence &shortcut  = {},
                                          bool                isEnabled = true) {
     action.setParent(this);
@@ -130,6 +147,20 @@ void MainWindow::createMenusAndActions()
                            &MainWindow::toggleFullscreen,
                            Qt::CTRL | Qt::Key_F);
   viewMenu->addAction(&this->actionFullScreen);
+  configureCheckableAction(this->actionShowThreadStatus,
+                           nullptr,
+                           "Show &Debug",
+                           false,
+                           &MainWindow::toggleShowDebug,
+                           Qt::CTRL | Qt::Key_D);
+  viewMenu->addAction(&this->actionShowThreadStatus);
+  configureCheckableAction(this->actionShowProgressGraph,
+                           nullptr,
+                           "Show &Progress Graph",
+                           false,
+                           &MainWindow::toggleShowProgressGraph,
+                           Qt::CTRL | Qt::Key_P);
+  viewMenu->addAction(&this->actionShowProgressGraph);
 
   auto settingsMenu = this->ui.menuBar->addMenu("Settings");
   settingsMenu->addAction("Select VVdeC library ...", this, &MainWindow::onSelectVVDeCLibrary);

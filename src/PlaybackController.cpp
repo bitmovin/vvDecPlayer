@@ -6,8 +6,7 @@
 #include <QDebug>
 #include <decoder/decoderVVDec.h>
 
-PlaybackController::PlaybackController(ILogger *logger)
-    : logger(logger)
+PlaybackController::PlaybackController(ILogger *logger) : logger(logger)
 {
   assert(logger != nullptr);
   this->reset();
@@ -39,6 +38,11 @@ void PlaybackController::reset()
           this,
           &PlaybackController::onDecodeOfSegmentDone);
 
+  connect(this->decoderManager.get(),
+          &DecoderManager::onSegmentLengthUpdate,
+          this->fileDownloadManager.get(),
+          &FileDownloadManager::setSegmentLength);
+
   this->logger->addMessage("Playback Controller initialized", LoggingPriority::Info);
 }
 
@@ -54,6 +58,15 @@ QString PlaybackController::getStatus()
   status += this->decoderManager->getStatus() + "\n";
   status += this->frameConversionBuffer->getStatus() + "\n";
   return status;
+}
+
+std::vector<FrameStatus> PlaybackController::getFrameQueueInfo()
+{
+  std::vector<FrameStatus> info;
+  this->frameConversionBuffer->addFrameQueueInfo(info);
+  this->decoderManager->addFrameQueueInfo(info);
+  this->fileDownloadManager->addFrameQueueInfo(info);
+  return info;
 }
 
 void PlaybackController::onSegmentReadyForDecode()

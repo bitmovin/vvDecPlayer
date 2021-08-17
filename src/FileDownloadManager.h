@@ -22,9 +22,13 @@ public:
   bool                  isDownloadRunning() { return this->fileDownloader->isDownloadRunning(); }
 
   QString getStatus();
+  void addFrameQueueInfo(std::vector<FrameStatus> &info);
 
 signals:
   void onSegmentReadyForDecode();
+
+public slots:
+  void setSegmentLength(unsigned segmentLength);
 
 private slots:
   void onDownloadDone();

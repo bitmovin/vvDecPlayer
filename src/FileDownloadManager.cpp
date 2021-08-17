@@ -20,10 +20,7 @@ FileDownloadManager::FileDownloadManager(ILogger *logger) : logger(logger)
           &FileDownloadManager::onDownloadDone);
 }
 
-void FileDownloadManager::abort()
-{
-  this->fileDownloader->abort();
-}
+void FileDownloadManager::abort() { this->fileDownloader->abort(); }
 
 void FileDownloadManager::openDirectory(QDir path, QString segmentPattern)
 {
@@ -65,6 +62,16 @@ QString FileDownloadManager::getStatus()
   if (this->fileDownloader)
     return this->fileDownloader->getStatus();
   return {};
+}
+
+void FileDownloadManager::addFrameQueueInfo(std::vector<FrameStatus> &info)
+{
+  this->fileDownloader->addFrameQueueInfo(info);
+}
+
+void FileDownloadManager::setSegmentLength(unsigned segmentLength)
+{
+  this->fileDownloader->setSegmentLength(segmentLength);
 }
 
 void FileDownloadManager::onDownloadDone()

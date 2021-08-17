@@ -24,6 +24,7 @@ public:
   std::optional<QImage> getNextImage();
 
   QString getStatus();
+  void addFrameQueueInfo(std::vector<FrameStatus> &info);
 
 private:
   void runConversion();

@@ -26,9 +26,11 @@ public:
   void decodeFile(std::shared_ptr<File> file);
 
   QString getStatus();
+  void addFrameQueueInfo(std::vector<FrameStatus> &info);
 
 signals:
   void onDecodeOfSegmentDone();
+  void onSegmentLengthUpdate(unsigned segmentLength);
 
 private:
   ILogger *              logger{};
@@ -57,4 +59,7 @@ private:
     WaitingForNextFile
   };
   DecoderState decoderState{DecoderState::Running};
+
+  // Note: This is just a guess. After decoding one segment we will know.
+  unsigned segmentLength{24};
 };

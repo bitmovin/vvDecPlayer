@@ -5,6 +5,7 @@
 
 #include "ILogger.h"
 #include <common/File.h>
+#include <common/RawFrame.h>
 
 #include <QByteArray>
 #include <QObject>
@@ -35,7 +36,9 @@ public:
   std::size_t           nrFilesInDownloadedQueue();
   bool                  isDownloadRunning();
 
+  void setSegmentLength(unsigned segmentLength) { this->segmentLength = segmentLength; }
   QString getStatus();
+  void addFrameQueueInfo(std::vector<FrameStatus> &info);
 
 signals:
 
@@ -54,4 +57,6 @@ private:
   std::thread             downloaderThread;
   std::condition_variable downloaderCV;
   bool                    downloaderAbort{false};
+
+  unsigned segmentLength{24};
 };

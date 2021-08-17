@@ -7,6 +7,7 @@
 #include "FileDownloadManager.h"
 #include "FrameConversionBuffer.h"
 #include "ILogger.h"
+#include <common/RawFrame.h>
 
 #include <QDir>
 #include <QObject>
@@ -26,6 +27,7 @@ public:
   FrameConversionBuffer *getFrameConversionBuffer() { return this->frameConversionBuffer.get(); }
   
   QString getStatus();
+  std::vector<FrameStatus> getFrameQueueInfo();
 
 public slots:
   void onSegmentReadyForDecode();

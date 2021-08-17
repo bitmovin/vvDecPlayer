@@ -69,10 +69,20 @@ QString FrameConversionBuffer::getStatus()
 {
   if (this->conversionAbort)
     return "Conversion: Aborted";
-  return QString("Conversion: YUV buffer %1 - RGB buffer %2 - %3")
+  return QString("Conversion: YUV buffer %1 RGB buffer %2 %3")
       .arg(this->framesToConvert.size())
       .arg(this->convertedFrames.size())
-      .arg(this->conversionRunning.load() ? "Conversion Running" : "Conversion Paused");
+      .arg(this->conversionRunning.load() ? "Run" : "Pause");
+}
+
+void FrameConversionBuffer::addFrameQueueInfo(std::vector<FrameStatus> &info)
+{
+  for (size_t i = 0; i < this->convertedFrames.size(); i++)
+    info.push_back(FrameStatus(FrameState::Converted));
+  if (this->conversionRunning.load())
+    info.push_back(FrameStatus(FrameState::Decoded, true));
+  for (size_t i = 0; i < this->framesToConvert.size(); i++)
+    info.push_back(FrameStatus(FrameState::Decoded));
 }
 
 void FrameConversionBuffer::runConversion()
@@ -82,7 +92,6 @@ void FrameConversionBuffer::runConversion()
   {
     RawYUVFrame currentFrame;
     {
-      this->conversionRunning.store(false);
       std::unique_lock<std::mutex> lck(this->framesToConvertMutex);
       this->conversionCV.wait(lck, [this]() {
         return (!this->framesToConvert.empty() && this->convertedFrames.size() < MAX_QUEUE_SIZE) ||
@@ -104,6 +113,7 @@ void FrameConversionBuffer::runConversion()
         currentFrame.rawData, outputImage, currentFrame.pixelFormat, currentFrame.frameSize);
     DEBUG("Conversion Thread: Push output");
     std::unique_lock<std::mutex> lck(this->convertedFramesMutex);
+    this->conversionRunning.store(false);
     this->convertedFrames.push(outputImage);
     DEBUG("Conversion Thread: Frame " << frameCounter << " done.");
     frameCounter++;

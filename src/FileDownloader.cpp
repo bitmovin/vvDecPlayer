@@ -78,6 +78,20 @@ QString FileDownloader::getStatus()
   return status;
 }
 
+void FileDownloader::addFrameQueueInfo(std::vector<FrameStatus> &info)
+{
+  std::unique_lock<std::mutex> lck(this->currentFileMutex);
+  if (this->currentFile)
+  {
+    auto nrFramesDownloaded = int(this->segmentLength * this->currentFile->downloadProgress.load() / 100.0);
+    auto nrFramesToDownload = this->segmentLength - nrFramesDownloaded;
+    for (size_t i = 0; i < nrFramesDownloaded; i++)
+      info.push_back(FrameStatus(FrameState::Downloaded));
+    for (size_t i = 0; i < nrFramesToDownload; i++)
+      info.push_back(FrameStatus(FrameState::DownloadQueued, (i == 0)));
+  }
+}
+
 void FileDownloader::runDownloader()
 {
   this->logger->addMessage("Started downloader thread", LoggingPriority::Info);

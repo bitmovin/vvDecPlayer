@@ -24,6 +24,8 @@ public:
 
   void addMessage(QString message, LoggingPriority priority) override;
   void clearMessages() override;
+  void setShowDebugInfo(bool showDebugInfo);
+  void setShowProgressGraph(bool drawGraph);
 
 private:
   virtual void paintEvent(QPaintEvent *event) override;
@@ -39,6 +41,7 @@ private:
 
   void drawAndUpdateMessages(QPainter &painter);
   void drawFPSAndStatusText(QPainter &painter);
+  void drawProgressGraph(QPainter &painter);
 
   QBasicTimer  timer;
   int          timerFPSCounter{};
@@ -48,4 +51,7 @@ private:
 
   PlaybackController *playbackController{};
   QImage              currentImage;
+
+  bool showDebugInfo{false};
+  bool showProgressGraph{false};
 };
