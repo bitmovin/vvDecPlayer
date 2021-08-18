@@ -45,7 +45,7 @@ void FileDownloader::downloadLocalFile(QString pathOrURL)
   DEBUG("Starting download of file " << pathOrURL);
 
   this->lastSegments.push_back(SegmentData(f->nrBytes * 8));
-  if (this->lastSegments.size() > 5)
+  if (this->lastSegments.size() > 10)
     this->lastSegments.pop_front();
 
   std::scoped_lock lock(this->currentFileMutex);

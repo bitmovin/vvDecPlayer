@@ -130,8 +130,8 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
   graphRect.setSize(QSize(500, 300));
   graphRect.moveBottomLeft(QPoint(0, this->height()));
 
-  painter.setBrush(Qt::white);
-  painter.drawRect(graphRect);
+  // painter.setBrush(Qt::white);
+  // painter.drawRect(graphRect);
 
   constexpr unsigned blockDistance = 3 + 1;
   QRect frameRect;
@@ -160,30 +160,30 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
     painter.drawRect(frameRect);
   }
 
-  // Next the graph
-  auto segmentData = this->playbackController->getLastSegmentsData();
+  // // Next the graph
+  // auto segmentData = this->playbackController->getLastSegmentsData();
 
-  painter.setPen(Qt::black);
-  painter.setBrush(Qt::cyan);
+  // painter.setPen(Qt::black);
+  // painter.setBrush(Qt::cyan);
 
-  QRect segmentRect;
-  segmentRect.setWidth(blockDistance * 24);
+  // QRect segmentRect;
+  // segmentRect.setWidth(blockDistance * 24);
   
-  auto nrSegmentsToDraw = (info.size() + 23) / 24;
-  auto segmentIt = segmentData.rbegin();
-  for (size_t i = 0; i < nrSegmentsToDraw; i++)
-  {
-    segmentRect.setHeight(int(segmentIt->bitrate) / 1000);
-    segmentRect.moveBottom(graphRect.bottom() - 15);
-    auto xOffset = ((nrSegmentsToDraw - i) * 24 - this->frameSegmentOffset) * blockDistance;
-    segmentRect.moveLeft(int(xOffset));
+  // auto nrSegmentsToDraw = (info.size() + 23) / 24;
+  // auto segmentIt = segmentData.rbegin();
+  // for (size_t i = 0; i < nrSegmentsToDraw; i++)
+  // {
+  //   segmentRect.setHeight(int(segmentIt->bitrate) / 5000);
+  //   segmentRect.moveBottom(graphRect.bottom() - 15);
+  //   auto xOffset = ((nrSegmentsToDraw - i) * 24 - this->frameSegmentOffset) * blockDistance;
+  //   segmentRect.moveLeft(int(xOffset));
 
-    painter.drawRect(segmentRect);
+  //   painter.drawRect(segmentRect);
 
-    segmentIt++;
-    if (segmentIt == segmentData.rend())
-      break;
-  }
+  //   segmentIt++;
+  //   if (segmentIt == segmentData.rend())
+  //     break;
+  // }
 }
 
 void ViewWidget::clearMessages()
