@@ -4,62 +4,36 @@
 #pragma once
 
 #include "ILogger.h"
-#include <FrameConversionBuffer.h>
-#include <QObject>
-#include <common/File.h>
+#include <SegmentBuffer.h>
 #include <condition_variable>
 #include <decoder/decoderBase.h>
 #include <optional>
 #include <thread>
 
-
-class DecoderManager : public QObject
+class DecoderManager
 {
-  Q_OBJECT
-
 public:
-  DecoderManager(ILogger *logger, FrameConversionBuffer *frameConversionBuffer);
+  DecoderManager(ILogger *logger, SegmentBuffer *segmentBuffer);
   ~DecoderManager();
   void abort();
 
-  bool isDecodeRunning();
-  void decodeFile(std::shared_ptr<File> file);
-
-  QString getStatus();
-  void addFrameQueueInfo(std::vector<FrameStatus> &info);
-
-signals:
-  void onDecodeOfSegmentDone();
-  void onSegmentLengthUpdate(unsigned segmentLength);
+  QString getStatus() ;
 
 private:
-  ILogger *              logger{};
-  FrameConversionBuffer *frameConversionBuffer{};
+  ILogger *      logger{};
+  SegmentBuffer *segmentBuffer{};
 
   void runDecoder();
-
-  std::optional<std::size_t> findNextNalInCurFile(std::size_t start);
-
-  std::shared_ptr<File> currentFile;
-  std::mutex            currentFileMutex;
-  std::size_t           currentDataOffset{};
 
   std::unique_ptr<decoder::decoderBase> decoder;
 
   std::thread             decoderThread;
-  std::condition_variable decoderCV;
   bool                    decoderAbort{false};
 
-  size_t currentDecodeFrame{};
-
-  enum class DecoderState
-  {
-    Running,
-    WaitingToPushOutput,
-    WaitingForNextFile
-  };
-  DecoderState decoderState{DecoderState::Running};
+  size_t currentFrameIdxInSegment{};
 
   // Note: This is just a guess. After decoding one segment we will know.
   unsigned segmentLength{24};
+
+  QString statusText;
 };

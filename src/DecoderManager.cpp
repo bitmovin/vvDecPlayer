@@ -21,10 +21,20 @@ namespace
 
 auto START_CODE = QByteArrayLiteral("\x00\x00\x01");
 
+std::optional<std::size_t> findNextNalInCurFile(QByteArray &data, std::size_t start)
+{
+  auto newStart = data.indexOf(START_CODE, start);
+  if (newStart < 0)
+    return {};
+  if (newStart >= 1 && data.at(newStart - 1) == char(0x00))
+    newStart -= 1;
+  return newStart;
 }
 
-DecoderManager::DecoderManager(ILogger *logger, FrameConversionBuffer *frameConversionBuffer)
-    : logger(logger), frameConversionBuffer(frameConversionBuffer)
+} // namespace
+
+DecoderManager::DecoderManager(ILogger *logger, SegmentBuffer *segmentBuffer)
+    : logger(logger), segmentBuffer(segmentBuffer)
 {
   this->decoder = std::make_unique<decoder::decoderVVDec>();
   if (this->decoder->errorInDecoder())
@@ -44,75 +54,31 @@ void DecoderManager::abort()
   this->decoderAbort = true;
   if (this->decoderThread.joinable())
   {
-    this->decoderCV.notify_one();
     this->decoderThread.join();
   }
 }
 
-void DecoderManager::decodeFile(std::shared_ptr<File> file)
-{
-  assert(!this->currentFile);
-  DEBUG("Starting decoding of file " << file->pathOrURL);
-
-  std::unique_lock<std::mutex> lck(this->currentFileMutex);
-  this->currentFile = file;
-  this->decoderCV.notify_one();
-}
-
 QString DecoderManager::getStatus()
 {
-  if (this->decoderState == DecoderState::Running)
-    return QString("Decoder: Decoding file. Frame %1").arg(this->currentDecodeFrame);
-  else if (this->decoderState == DecoderState::WaitingForNextFile)
-    return "Decoder: Waiting for next file to decode.";
-  else if (this->decoderState == DecoderState::WaitingToPushOutput)
-    return QString("Decoder: Decoding file. Frame %1 - pushing out").arg(this->currentDecodeFrame);
-  return {"Decoder: "};
+  return (this->decoderAbort ? "Abort " : "") + this->statusText;
 }
-
-void DecoderManager::addFrameQueueInfo(std::vector<FrameStatus> &info)
-{
-  if (this->decoderState == DecoderState::WaitingToPushOutput ||
-      this->decoderState == DecoderState::Running)
-  {
-    auto framesToDecodeInSegment = this->segmentLength - this->currentDecodeFrame;
-    if (framesToDecodeInSegment > 0)
-      for (size_t i = 0; i < framesToDecodeInSegment; i++)
-        info.push_back(FrameStatus(FrameState::Downloaded));
-  }
-}
-
-bool DecoderManager::isDecodeRunning() { return bool(this->currentFile); }
 
 void DecoderManager::runDecoder()
 {
   this->logger->addMessage("Started decoder thread", LoggingPriority::Info);
 
+  size_t currentDataOffset{};
+  auto   segmentIt = this->segmentBuffer->getFirstSegmentToDecode();
+
   while (true)
   {
-    {
-      std::unique_lock<std::mutex> lck(this->currentFileMutex);
-      if (!this->currentFile && !this->decoderAbort)
-      {
-        DEBUG("Decoder Waiting for next file");
-        this->decoderState = DecoderState::WaitingForNextFile;
-        this->decoderCV.wait(lck, [this]() { return this->currentFile || this->decoderAbort; });
-        this->decoderState = DecoderState::Running;
-      }
-
-      if (this->decoderAbort)
-        return;
-      if (!this->currentFile)
-        continue;
-    }
-
     // // Simulate decoding
     // using namespace std::chrono_literals;
     // std::this_thread::sleep_for(1000ms);
 
-    this->currentDecodeFrame = 0;
-    if (auto firstPos = this->findNextNalInCurFile(0))
-      this->currentDataOffset = *firstPos;
+    this->currentFrameIdxInSegment = 0;
+    if (auto firstPos = findNextNalInCurFile(segmentIt->compressedData, 0))
+      currentDataOffset = *firstPos;
     while (true)
     {
       auto state = this->decoder->state();
@@ -120,11 +86,12 @@ void DecoderManager::runDecoder()
       if (state == decoder::DecoderState::NeedsMoreData)
       {
         QByteArray nalData;
-        if (auto nextNalStart = this->findNextNalInCurFile(this->currentDataOffset + 3))
+        if (auto nextNalStart =
+                findNextNalInCurFile(segmentIt->compressedData, currentDataOffset + 3))
         {
-          auto length = *nextNalStart - this->currentDataOffset;
-          nalData     = this->currentFile->fileData.mid(this->currentDataOffset, length);
-          this->currentDataOffset = *nextNalStart;
+          auto length       = *nextNalStart - currentDataOffset;
+          nalData           = segmentIt->compressedData.mid(currentDataOffset, length);
+          currentDataOffset = *nextNalStart;
         }
 
         DEBUG("Pushing " << nalData.size() << " bytes");
@@ -140,26 +107,24 @@ void DecoderManager::runDecoder()
         DEBUG("Checking for next frame ");
         if (this->decoder->decodeNextFrame())
         {
-          RawYUVFrame newFrame;
-          newFrame.rawData     = this->decoder->getRawFrameData();
+          Frame newFrame;
+          newFrame.rawYUVData  = this->decoder->getRawFrameData();
           newFrame.pixelFormat = this->decoder->getYUVPixelFormat();
           newFrame.frameSize   = this->decoder->getFrameSize();
+          segmentIt->frames.push_back(newFrame);
 
-          this->decoderState = DecoderState::WaitingToPushOutput;
-          this->frameConversionBuffer->addFrameToConversion(newFrame);
-          this->decoderState = DecoderState::Running;
-
-          DEBUG("Retrived frame " << this->currentDecodeFrame << " with size "
+          DEBUG("Retrived frame " << this->currentFrameIdxInSegment << " with size "
                                   << newFrame.frameSize.width << "x" << newFrame.frameSize.height);
-          this->currentDecodeFrame++;
+          this->currentFrameIdxInSegment++;
         }
       }
 
       if (state == decoder::DecoderState::Error)
       {
         DEBUG("Decoding error");
-        this->logger->addMessage(QString("Error decoding frame %1").arg(this->currentDecodeFrame),
-                                 LoggingPriority::Error);
+        this->logger->addMessage(
+            QString("Error decoding frame %1").arg(this->currentFrameIdxInSegment),
+            LoggingPriority::Error);
         break;
       }
 
@@ -168,35 +133,22 @@ void DecoderManager::runDecoder()
         DEBUG("Decoding EOF");
         break;
       }
+
+      if (this->decoderAbort)
+        return;
     }
 
     if (this->decoderAbort)
       return;
 
-    this->currentFile.reset();
-    emit onDecodeOfSegmentDone();
-    DEBUG("Decoding of segment done");
+    // This may block until the decoder can decode another segment
+    this->statusText = "Waiting";
+    segmentIt        = this->segmentBuffer->getNextSegmentToDecode(segmentIt);
+    this->statusText = "Decoding";
 
-    if (this->segmentLength != this->currentDecodeFrame)
-    {
-      this->logger->addMessage(
-          QString("Detected new segment length of %1 frames").arg(this->segmentLength),
-          LoggingPriority::Info);
-      this->segmentLength = unsigned(this->currentDecodeFrame);
-      emit onSegmentLengthUpdate(this->segmentLength);
-    }
+    if (this->decoderAbort)
+      return;
 
     this->decoder->resetDecoder();
   }
-}
-
-std::optional<std::size_t> DecoderManager::findNextNalInCurFile(std::size_t start)
-{
-  const auto &data     = this->currentFile->fileData;
-  auto        newStart = data.indexOf(START_CODE, start);
-  if (newStart < 0)
-    return {};
-  if (newStart >= 1 && data.at(newStart - 1) == char(0x00))
-    newStart -= 1;
-  return newStart;
 }
