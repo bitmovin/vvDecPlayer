@@ -38,7 +38,7 @@ public:
 
     FrameIterator() = default;
 
-    FrameIterator(FrameIterator &it)
+    FrameIterator(const FrameIterator &it)
         : segmentIt(it.segmentIt), frameIt(it.frameIt), segments(it.segments)
     {
     }
@@ -47,6 +47,8 @@ public:
         : segmentIt(segmentIt), frameIt(frameIt), segments(segments)
     {
     }
+
+    Segment *getSegment() { return &(*this->segmentIt); }
 
     reference      operator*() const { return *this->frameIt; }
     pointer        operator->() { return &(*this->frameIt); }
@@ -57,7 +59,15 @@ public:
       {
         this->segmentIt++;
         if (this->segmentIt != this->segments->end())
+        {
+          if (this->segmentIt->frames.size() == 0)
+          {
+            // The next segment has no frames. In this case we also return end().
+            this->segmentIt = this->segments->end();
+            return *this;
+          }
           this->frameIt = this->segmentIt->frames.begin();
+        }
       }
       return *this;
     }
@@ -82,12 +92,8 @@ public:
     std::deque<Segment> *         segments{};
   };
 
-  FrameIterator begin()
-  {
-    return FrameIterator(
-        this->segments.begin(), this->segments.front().frames.begin(), &this->segments);
-  }
-  FrameIterator end() { return FrameIterator(this->segments.end(), {}, &this->segments); }
+  FrameIterator begin();
+  FrameIterator end();
 
   SegmentIt beginSegment() { return this->segments.begin(); }
   SegmentIt endSegment() { return this->segments.end(); }
@@ -107,7 +113,8 @@ public:
   FrameIterator getNextFrameToConvert(FrameIterator frameIt);
 
   // The player will get frames to display here (and may get none (end) if there is none available)
-  FrameIterator getNextFrameToDisplay();
+  FrameIterator getFirstFrameToDisplay();
+  FrameIterator getNextFrameToDisplay(FrameIterator frameIt);
 
 private:
   std::deque<Segment> segments;

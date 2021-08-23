@@ -10,7 +10,6 @@
 #include <SegmentBuffer.h>
 #include <common/Frame.h>
 
-
 #include <QDir>
 #include <QObject>
 
@@ -28,6 +27,8 @@ public:
 
   QString getStatus();
   auto    getLastSegmentsData() -> std::deque<SegmentData>;
+
+  SegmentBuffer *getSegmentBuffer() { return &this->segmentBuffer; }
 
 public slots:
   void onSegmentReadyForDecode();

@@ -49,8 +49,8 @@ private:
   double       currentFps{};
   virtual void timerEvent(QTimerEvent *event) override;
 
-  PlaybackController *playbackController{};
-  QImage              currentImage;
+  PlaybackController *         playbackController{};
+  SegmentBuffer::FrameIterator curFrame;
 
   unsigned frameSegmentOffset{};
 
