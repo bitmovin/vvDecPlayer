@@ -23,7 +23,9 @@ class SegmentBuffer
 {
 public:
   SegmentBuffer()  = default;
-  ~SegmentBuffer() = default;
+  ~SegmentBuffer();
+
+  void abort();
 
   using SegmentIt = std::deque<Segment>::iterator;
   using FrameIt   = std::vector<Frame>::iterator;
@@ -121,4 +123,6 @@ private:
 
   std::condition_variable eventCV;
   std::mutex              segmentQueueMutex;
+
+  bool aborted{false};
 };

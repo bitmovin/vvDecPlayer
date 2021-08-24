@@ -11,12 +11,9 @@
 #include <common/Frame.h>
 
 #include <QDir>
-#include <QObject>
 
-class PlaybackController : public QObject
+class PlaybackController
 {
-  Q_OBJECT
-
 public:
   PlaybackController(ILogger *logger);
   ~PlaybackController();
@@ -29,10 +26,6 @@ public:
   auto    getLastSegmentsData() -> std::deque<SegmentData>;
 
   SegmentBuffer *getSegmentBuffer() { return &this->segmentBuffer; }
-
-public slots:
-  void onSegmentReadyForDecode();
-  void onDecodeOfSegmentDone();
 
 private:
   ILogger *logger{};
