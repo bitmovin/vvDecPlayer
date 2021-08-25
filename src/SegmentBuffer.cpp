@@ -3,7 +3,7 @@
 
 #include "SegmentBuffer.h"
 
-#define DEBUG_SEGMENT_BUFFER 0
+#define DEBUG_SEGMENT_BUFFER 1
 #if DEBUG_SEGMENT_BUFFER
 #include <QDebug>
 #define DEBUG(f) qDebug() << f
@@ -11,10 +11,67 @@
 #define DEBUG(f) ((void)0)
 #endif
 
-SegmentBuffer::~SegmentBuffer()
+namespace
 {
-  this->abort();
+
+SegmentBuffer::SegmentPtr getNextSegmentFromQueue(SegmentBuffer::SegmentPtr    curSegment,
+                                                  SegmentBuffer::SegmentDeque *segmentDeque)
+{
+  for (auto it = segmentDeque->begin(); it != segmentDeque->end(); it++)
+  {
+    if (*it == curSegment)
+    {
+      auto nextSegment = it++;
+      if (nextSegment != segmentDeque->end())
+        return *it;
+      break;
+    }
+  }
+  return {};
 }
+
+} // namespace
+
+SegmentBuffer::FrameIterator::FrameIterator(const FrameIterator &it)
+    : curSegment(it.curSegment), frameIt(it.frameIt), segments(it.segments)
+{
+}
+
+SegmentBuffer::FrameIterator::FrameIterator(SegmentPtr    segment,
+                                            FrameIt       frameIt,
+                                            SegmentDeque *segments)
+    : curSegment(segment), frameIt(frameIt), segments(segments)
+{
+}
+
+SegmentBuffer::FrameIterator &SegmentBuffer::FrameIterator::operator++()
+{
+  this->frameIt++;
+  if (this->frameIt == this->curSegment->frames.end())
+  {
+    auto nextSegment = getNextSegmentFromQueue(this->curSegment, this->segments);
+    if (!nextSegment || nextSegment->frames.size() == 0)
+    {
+      this->curSegment.reset();
+      this->segments = nullptr;
+    }
+    else
+    {
+      this->curSegment = nextSegment;
+      this->frameIt = nextSegment->frames.begin();
+    }
+  }
+  return *this;
+}
+
+SegmentBuffer::FrameIterator SegmentBuffer::FrameIterator::operator++(int)
+{
+  FrameIterator tmp = *this;
+  ++(*this);
+  return tmp;
+}
+
+SegmentBuffer::~SegmentBuffer() { this->abort(); }
 
 void SegmentBuffer::abort()
 {
@@ -25,15 +82,14 @@ void SegmentBuffer::abort()
 
 SegmentBuffer::FrameIterator SegmentBuffer::begin()
 {
+  assert(this->segments.size() > 0);
+  assert(this->segments.front()->frames.size() > 0);
   return SegmentBuffer::FrameIterator(
-      this->segments.begin(), this->segments.front().frames.begin(), &this->segments);
+      *this->segments.begin(), this->segments.front()->frames.begin(), &this->segments);
 }
-SegmentBuffer::FrameIterator SegmentBuffer::end()
-{
-  return SegmentBuffer::FrameIterator(this->segments.end(), {}, &this->segments);
-}
+SegmentBuffer::FrameIterator SegmentBuffer::end() { return {}; }
 
-void SegmentBuffer::pushDownloadedSegment(Segment segment)
+void SegmentBuffer::pushDownloadedSegment(SegmentPtr segment)
 {
   DEBUG("SegmentBuffer: Try push downloaded segment");
   std::unique_lock<std::mutex> lk(this->segmentQueueMutex);
@@ -47,7 +103,7 @@ void SegmentBuffer::pushDownloadedSegment(Segment segment)
   if (this->aborted)
   {
     DEBUG("SegmentBuffer: Not Pushed downloaded segment because of abort");
-    return; 
+    return;
   }
 
   DEBUG("SegmentBuffer: Pushed downloaded segment");
@@ -56,7 +112,7 @@ void SegmentBuffer::pushDownloadedSegment(Segment segment)
   this->eventCV.notify_all();
 }
 
-SegmentBuffer::SegmentIt SegmentBuffer::getFirstSegmentToDecode()
+SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToDecode()
 {
   DEBUG("SegmentBuffer: Waiting for first segment to decode.");
   this->eventCV.notify_all();
@@ -65,31 +121,30 @@ SegmentBuffer::SegmentIt SegmentBuffer::getFirstSegmentToDecode()
   this->eventCV.wait(lk, [this]() { return this->aborted || this->segments.size() > 0; });
 
   DEBUG("SegmentBuffer: First segment to decode ready.");
-  return this->segments.begin();
+  return *this->segments.begin();
 }
 
-SegmentBuffer::SegmentIt SegmentBuffer::getNextSegmentToDecode(SegmentIt segmentIt)
+SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToDecode(SegmentPtr segmentPtr)
 {
   DEBUG("SegmentBuffer: Waiting for next segment to decode");
   this->eventCV.notify_all();
 
   std::unique_lock<std::mutex> lk(this->segmentQueueMutex);
-  this->eventCV.wait(lk, [this, segmentIt]() {
+  this->eventCV.wait(lk, [this, segmentPtr]() {
     if (this->aborted)
       return true;
-    auto nextIt = segmentIt;
-    nextIt++;
-    return nextIt != this->segments.end();
+    auto nextSegment = getNextSegmentFromQueue(segmentPtr, &this->segments);
+    return bool(nextSegment);
   });
 
   if (this->aborted)
   {
     DEBUG("SegmentBuffer: Next segment to decode not ready because of abort");
-    return this->segments.end();
+    return {};
   }
 
   DEBUG("SegmentBuffer: Next segment to decode ready");
-  return segmentIt++;
+  return getNextSegmentFromQueue(segmentPtr, &this->segments);
 }
 
 SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToConvert()
@@ -99,14 +154,14 @@ SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToConvert()
 
   std::unique_lock<std::mutex> lk(this->segmentQueueMutex);
   this->eventCV.wait(lk, [this]() {
-    auto frameAvailabe = this->segments.size() > 0 && this->segments.front().frames.size() > 0;
+    auto frameAvailabe = this->segments.size() > 0 && this->segments.front()->frames.size() > 0;
     return this->aborted || frameAvailabe;
   });
 
   if (this->aborted)
   {
     DEBUG("SegmentBuffer: First frame to convert not ready because of abort");
-    return this->end();
+    return {};
   }
 
   DEBUG("SegmentBuffer: First frame to convert ready");
@@ -122,7 +177,7 @@ SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToConvert(FrameIterator 
   this->eventCV.wait(lk, [this, frameIt]() {
     auto nextFrame = frameIt;
     nextFrame++;
-    return nextFrame != this->end();
+    return nextFrame.isNull();
   });
 
   DEBUG("Next frame to convert ready.");
@@ -131,36 +186,53 @@ SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToConvert(FrameIterator 
 
 SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToDisplay()
 {
-  DEBUG("Waiting for first frame to display.");
-  this->eventCV.notify_all();
-
   std::unique_lock<std::mutex> lk(this->segmentQueueMutex);
-  this->eventCV.wait(lk, [this]() {
-    if (this->segments.size() == 0)
-      return false;
-    auto &segment = this->segments.front();
-    if (segment.frames.size() == 0)
-      return false;
-    auto &frame = segment.frames.front();
-    return frame.frameState == FrameState::ConvertedToRGB;
-  });
+
+  if (this->aborted)
+  {
+    DEBUG("SegmentBuffer:: First frame to display not ready because aborted");
+    return {};
+  }
+
+  if (this->segments.size() == 0)
+  {
+    DEBUG("SegmentBuffer:: First frame to display not ready yet");
+    return {};
+  }
+
+  auto &firstSegment = this->segments.front();
+  if (firstSegment->frames.size() == 0 ||
+      firstSegment->frames.front().frameState == FrameState::ConvertedToRGB)
+  {
+    DEBUG("SegmentBuffer:: First frame to display not ready yet");
+    return {};
+  }
 
   DEBUG("First frame to display ready.");
+  this->eventCV.notify_all();
   return this->begin();
 }
 
 SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator frameIt)
 {
-  DEBUG("Waiting for Next frame to display.");
-  this->eventCV.notify_all();
-
   std::unique_lock<std::mutex> lk(this->segmentQueueMutex);
-  this->eventCV.wait(lk, [this, frameIt]() {
-    auto nextFrame = frameIt;
-    nextFrame++;
-    return nextFrame != this->end() && nextFrame->frameState == FrameState::ConvertedToRGB;
-  });
+
+  if (this->aborted)
+  {
+    DEBUG("SegmentBuffer:: Next frame to display not ready because aborted");
+    return {};
+  }
+
+  assert(!frameIt.isNull());
+
+  auto nextFrame = frameIt++;
+  if (nextFrame.isNull() || nextFrame->frameState != FrameState::ConvertedToRGB)
+  {
+    DEBUG("SegmentBuffer:: Next frame to display not ready yet");
+    return {};
+  }
 
   DEBUG("Next frame to display ready.");
-  return frameIt++;
+  this->eventCV.notify_all();
+  return nextFrame;
 }

@@ -76,11 +76,11 @@ void FileDownloader::runDownloader()
       }
       else
       {
-        Segment newSegment;
-        newSegment.compressedData = inputFile.readAll();
+        auto newSegment = std::make_shared<Segment>();
+        newSegment->compressedData = inputFile.readAll();
 
         this->statusText = "Waiting";
-        this->segmentBuffer->pushDownloadedSegment(std::move(newSegment));
+        this->segmentBuffer->pushDownloadedSegment(newSegment);
         this->statusText = "Running";
       }
     }

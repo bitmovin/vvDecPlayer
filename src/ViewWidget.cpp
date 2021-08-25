@@ -28,10 +28,6 @@ ViewWidget::ViewWidget(QWidget *parent) : QWidget(parent)
   pal.setColor(QPalette::Window, Qt::black);
   this->setAutoFillBackground(true);
   this->setPalette(pal);
-
-  double frameRate     = 24.0;
-  auto   timerInterval = int(1000.0 / frameRate);
-  timer.start(timerInterval, Qt::PreciseTimer, this);
 }
 
 void ViewWidget::setPlaybackController(PlaybackController *playbackController)
@@ -55,11 +51,15 @@ void ViewWidget::paintEvent(QPaintEvent *)
 {
   QPainter painter(this);
 
-  if (!this->curFrame->rgbImage.isNull())
+  if (this->curFrame->isNull())
+    return;
+
+  auto &rgbImage = (*this->curFrame)->rgbImage;
+  if (!rgbImage.isNull())
   {
-    int x = (this->width() - this->curFrame->rgbImage.width()) / 2;
-    int y = (this->height() - this->curFrame->rgbImage.height()) / 2;
-    painter.drawImage(x, y, this->curFrame->rgbImage);
+    int x = (this->width() - rgbImage.width()) / 2;
+    int y = (this->height() - rgbImage.height()) / 2;
+    painter.drawImage(x, y, rgbImage);
   }
 
   this->drawAndUpdateMessages(painter);
@@ -107,7 +107,7 @@ void ViewWidget::drawAndUpdateMessages(QPainter &painter)
 
 void ViewWidget::drawFPSAndStatusText(QPainter &painter)
 {
-  auto text = QString("FPS: %1\n").arg(this->currentFps);
+  auto text = QString("FPS: %1\n").arg(this->actualFPS);
   if (this->playbackController && this->showDebugInfo)
     text += this->playbackController->getStatus();
   auto textSize = QFontMetrics(painter.font()).size(0, text);
@@ -149,12 +149,12 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
   // for (size_t i = 0; i < info.size(); i++)
   // {
   //   frameRect.moveLeft(leftStart + int(blockDistance * i));
-    
+
   //   if (info[i].isBeingProcessed)
   //     painter.setPen(Qt::black);
   //   else
   //     painter.setPen(Qt::NoPen);
-    
+
   //   painter.setBrush(colorMap.at(info[i].frameState));
 
   //   painter.drawRect(frameRect);
@@ -168,7 +168,7 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
 
   // QRect segmentRect;
   // segmentRect.setWidth(blockDistance * 24);
-  
+
   // auto nrSegmentsToDraw = (info.size() + 23) / 24;
   // auto segmentIt = segmentData.rbegin();
   // for (size_t i = 0; i < nrSegmentsToDraw; i++)
@@ -204,15 +204,32 @@ void ViewWidget::setShowProgressGraph(bool showGraph)
   this->update();
 }
 
+void ViewWidget::setPlaybackFps(double framerate)
+{
+  this->targetFPS = framerate;
+
+  if (framerate == 0.0)
+    timer.stop();
+  else
+  {
+    auto timerInterval = int(1000.0 / this->targetFPS);
+    timer.start(timerInterval, Qt::PreciseTimer, this);
+  }
+}
+
 void ViewWidget::timerEvent(QTimerEvent *event)
 {
   if (event && event->timerId() != timer.timerId())
     return QWidget::timerEvent(event);
   if (this->playbackController == nullptr)
     return;
-  
-  auto segmentBuffer = this->playbackController->getSegmentBuffer();
-  auto displayFrame = segmentBuffer->getNextFrameToDisplay(this->curFrame);
+
+  auto                         segmentBuffer = this->playbackController->getSegmentBuffer();
+  SegmentBuffer::FrameIterator displayFrame;
+  if (!this->curFrame)
+    displayFrame = segmentBuffer->getFirstFrameToDisplay();
+  else
+    displayFrame = segmentBuffer->getNextFrameToDisplay(*this->curFrame);
   if (displayFrame == segmentBuffer->end())
   {
     DEBUG("Timer even. No new image available.");
@@ -221,7 +238,7 @@ void ViewWidget::timerEvent(QTimerEvent *event)
 
   DEBUG("Timer even. Got next image");
   this->curFrame = displayFrame;
-  
+
   // Update the FPS counter every 50 frames
   this->timerFPSCounter++;
   if (this->timerFPSCounter >= 50)
@@ -230,7 +247,10 @@ void ViewWidget::timerEvent(QTimerEvent *event)
     double msecsSinceLastUpdate = (double)this->timerLastFPSTime.msecsTo(newFrameTime);
 
     // Print the frames per second as float with one digit after the decimal dot.
-    this->currentFps = (50.0 / (msecsSinceLastUpdate / 1000.0));
+    if (msecsSinceLastUpdate == 0)
+      this->actualFPS = 0.0;
+    else
+      this->actualFPS = (50.0 / (msecsSinceLastUpdate / 1000.0));
 
     this->timerLastFPSTime = QTime::currentTime();
     this->timerFPSCounter  = 0;

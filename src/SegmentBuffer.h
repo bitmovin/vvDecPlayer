@@ -22,13 +22,21 @@
 class SegmentBuffer
 {
 public:
-  SegmentBuffer()  = default;
+  SegmentBuffer() = default;
   ~SegmentBuffer();
 
   void abort();
 
-  using SegmentIt = std::deque<Segment>::iterator;
-  using FrameIt   = std::vector<Frame>::iterator;
+  /* The deque idea does not work. When adding things to the queue all iterators are invalidated.
+   * New idea:
+   *   - We store shared pointers to Segments in the queue. For going to the next segment we then
+   *     have to search though the queue but it only has a few items.
+   *   - The FrameIterator can use the current interace using also shared pointers to the segment
+   */
+
+  using FrameIt      = std::vector<Frame>::iterator;
+  using SegmentPtr   = std::shared_ptr<Segment>;
+  using SegmentDeque = std::deque<SegmentPtr>;
 
   struct FrameIterator
   {
@@ -39,75 +47,46 @@ public:
     using reference         = Frame &;
 
     FrameIterator() = default;
+    FrameIterator(const FrameIterator &it);
+    FrameIterator(SegmentPtr segment, FrameIt frameIt, SegmentDeque *segments);
 
-    FrameIterator(const FrameIterator &it)
-        : segmentIt(it.segmentIt), frameIt(it.frameIt), segments(it.segments)
-    {
-    }
-
-    FrameIterator(SegmentIt segmentIt, FrameIt frameIt, std::deque<Segment> *segments)
-        : segmentIt(segmentIt), frameIt(frameIt), segments(segments)
-    {
-    }
-
-    Segment *getSegment() { return &(*this->segmentIt); }
+    SegmentPtr getSegment() { return this->curSegment; }
+    bool       isNull() { return this->segments == nullptr; }
 
     reference      operator*() const { return *this->frameIt; }
     pointer        operator->() { return &(*this->frameIt); }
-    FrameIterator &operator++()
-    {
-      this->frameIt++;
-      if (this->frameIt == this->segmentIt->frames.end())
-      {
-        this->segmentIt++;
-        if (this->segmentIt != this->segments->end())
-        {
-          if (this->segmentIt->frames.size() == 0)
-          {
-            // The next segment has no frames. In this case we also return end().
-            this->segmentIt = this->segments->end();
-            return *this;
-          }
-          this->frameIt = this->segmentIt->frames.begin();
-        }
-      }
-      return *this;
-    }
-    FrameIterator operator++(int)
-    {
-      FrameIterator tmp = *this;
-      ++(*this);
-      return tmp;
-    }
+    FrameIterator &operator++();
+    FrameIterator operator++(int);
     friend bool operator==(const FrameIterator &a, const FrameIterator &b)
     {
-      return a.segmentIt == b.segmentIt && a.frameIt == b.frameIt;
+      if (a.segments == nullptr)
+        return b.segments == nullptr;
+      return a.curSegment == b.curSegment && a.frameIt == b.frameIt;
     };
     friend bool operator!=(const FrameIterator &a, const FrameIterator &b)
     {
-      return a.segmentIt != b.segmentIt || a.frameIt != b.frameIt;
+      if (a.segments == nullptr)
+        return b.segments != nullptr;
+      return a.curSegment != b.curSegment || a.frameIt != b.frameIt;
     };
 
   private:
-    std::deque<Segment>::iterator segmentIt;
-    std::vector<Frame>::iterator  frameIt;
-    std::deque<Segment> *         segments{};
+    SegmentPtr                   curSegment;
+    std::vector<Frame>::iterator frameIt;
+    SegmentDeque *               segments{};
   };
 
   FrameIterator begin();
   FrameIterator end();
 
-  SegmentIt beginSegment() { return this->segments.begin(); }
-  SegmentIt endSegment() { return this->segments.end(); }
-
   // The downloader will push downloaded segments in here (and may get blocked if the buffer is
   // full)
-  void pushDownloadedSegment(Segment segment);
+  void pushDownloadedSegment(SegmentPtr segment);
 
   // The decoder will get segments to decode here (and may get blocked if too many
   // decoded frames are already in the buffer)
-  SegmentIt getFirstSegmentToDecode();
-  SegmentIt getNextSegmentToDecode(SegmentIt segmentIt);
+  SegmentPtr getFirstSegmentToDecode();
+  SegmentPtr getNextSegmentToDecode(SegmentPtr segment);
 
   // The converter will get frames to convert here (and may get blocked if there
   // are none)
@@ -119,7 +98,7 @@ public:
   FrameIterator getNextFrameToDisplay(FrameIterator frameIt);
 
 private:
-  std::deque<Segment> segments;
+  SegmentDeque segments;
 
   std::condition_variable eventCV;
   std::mutex              segmentQueueMutex;

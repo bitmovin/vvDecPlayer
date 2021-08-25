@@ -200,6 +200,7 @@ void MainWindow::openLocalFolder()
     }
 
     this->playbackController->openDirectory(path, segmentPattern);
+    this->ui.viewWidget->setPlaybackFps(24.0);
   }
 }
 
