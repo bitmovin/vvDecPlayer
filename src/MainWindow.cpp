@@ -11,6 +11,8 @@
 #include <QKeyEvent>
 #include <QMessageBox>
 
+constexpr auto DEFAULT_SEGMENT_PATTERN = "segment-%i.vvc";
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
   this->ui.setupUi(this);
@@ -112,6 +114,16 @@ void MainWindow::createMenusAndActions()
   QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
   fileMenu->addAction("Open local folder ...", this, &MainWindow::openLocalFolder);
   fileMenu->addSeparator();
+  auto recentFileMenu = fileMenu->addMenu("Predefined FIles");
+  for (int i = 0; i < 1; i++)
+  {
+    this->fixedFileActions[i] = new QAction(this);
+    this->fixedFileActions[i]->setText("Local test Sintel");
+    this->fixedFileActions[i]->setData("D:/Bitmovin/Issues/EN-9928-VVEnc/Sintel720p");
+    connect(this->fixedFileActions[i].data(), &QAction::triggered, this, &MainWindow::openFixedFile);
+    recentFileMenu->addAction(this->fixedFileActions[i]);
+  }
+  fileMenu->addSeparator();
   fileMenu->addAction("Exit", this, &MainWindow::close);
 
   const bool menuActionsNoteCreatedYet = this->actionGroup.isNull();
@@ -185,7 +197,7 @@ void MainWindow::openLocalFolder()
                                                 "Please provide a pattern for the files to read "
                                                 "from the directory (e.g. \"segment_%i.vvc\")",
                                                 QLineEdit::Normal,
-                                                "segment-%i.vvc",
+                                                DEFAULT_SEGMENT_PATTERN,
                                                 &ok);
     if (!ok)
       return;
@@ -238,5 +250,16 @@ void MainWindow::onSelectVVDeCLibrary()
     settings.setValue("libVVDecFile", file);
 
     this->playbackController->reset();
+  }
+}
+
+void MainWindow::openFixedFile()
+{
+  auto action = qobject_cast<QAction *>(sender());
+  if (action)
+  {
+    auto pathToOpen = action->data().toString();
+    this->playbackController->openDirectory(pathToOpen, DEFAULT_SEGMENT_PATTERN);
+    this->ui.viewWidget->setPlaybackFps(24.0);
   }
 }

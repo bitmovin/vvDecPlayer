@@ -18,5 +18,5 @@ struct Segment
   using Percent = double;
   Percent downloadProgress{0.0};
 
-  std::vector<Frame> frames;
+  std::vector<std::shared_ptr<Frame>> frames;
 };

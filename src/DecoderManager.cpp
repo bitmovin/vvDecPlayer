@@ -107,10 +107,11 @@ void DecoderManager::runDecoder()
         DEBUG("Checking for next frame ");
         if (this->decoder->decodeNextFrame())
         {
-          Frame newFrame;
-          newFrame.rawYUVData  = this->decoder->getRawFrameData();
-          newFrame.pixelFormat = this->decoder->getYUVPixelFormat();
-          newFrame.frameSize   = this->decoder->getFrameSize();
+          auto newFrame = std::make_shared<Frame>();
+          newFrame->rawYUVData  = this->decoder->getRawFrameData();
+          newFrame->pixelFormat = this->decoder->getYUVPixelFormat();
+          newFrame->frameSize   = this->decoder->getFrameSize();
+          newFrame->frameState  = FrameState::Decoded;
           segmentIt->frames.push_back(newFrame);
 
           DEBUG("Retrived frame " << this->currentFrameIdxInSegment << " with size "

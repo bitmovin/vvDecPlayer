@@ -52,8 +52,8 @@ private:
   double       actualFPS{};
   virtual void timerEvent(QTimerEvent *event) override;
 
-  PlaybackController *                        playbackController{};
-  std::optional<SegmentBuffer::FrameIterator> curFrame;
+  PlaybackController *         playbackController{};
+  SegmentBuffer::FrameIterator curFrame;
 
   unsigned frameSegmentOffset{};
 

@@ -37,6 +37,7 @@ private slots:
   void toggleShowDebug(bool checked);
   void toggleShowProgressGraph(bool checked);
   void onSelectVVDeCLibrary();
+  void openFixedFile();
 
 private:
   Ui::MainWindow ui;
@@ -49,6 +50,8 @@ private:
   QAction                      actionShowThreadStatus;
   QAction                      actionShowProgressGraph;
   QScopedPointer<QActionGroup> actionGroup;
+  
+  QPointer<QAction> fixedFileActions[1];
 
   bool wasMaximizedBeforeFullScreen{false};
 

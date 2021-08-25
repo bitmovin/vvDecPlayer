@@ -34,50 +34,18 @@ public:
    *   - The FrameIterator can use the current interace using also shared pointers to the segment
    */
 
-  using FrameIt      = std::vector<Frame>::iterator;
+  using FramePt      = std::shared_ptr<Frame>;
   using SegmentPtr   = std::shared_ptr<Segment>;
   using SegmentDeque = std::deque<SegmentPtr>;
 
   struct FrameIterator
   {
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type   = std::ptrdiff_t;
-    using value_type        = Frame;
-    using pointer           = Frame *;
-    using reference         = Frame &;
-
     FrameIterator() = default;
-    FrameIterator(const FrameIterator &it);
-    FrameIterator(SegmentPtr segment, FrameIt frameIt, SegmentDeque *segments);
-
-    SegmentPtr getSegment() { return this->curSegment; }
-    bool       isNull() { return this->segments == nullptr; }
-
-    reference      operator*() const { return *this->frameIt; }
-    pointer        operator->() { return &(*this->frameIt); }
-    FrameIterator &operator++();
-    FrameIterator operator++(int);
-    friend bool operator==(const FrameIterator &a, const FrameIterator &b)
-    {
-      if (a.segments == nullptr)
-        return b.segments == nullptr;
-      return a.curSegment == b.curSegment && a.frameIt == b.frameIt;
-    };
-    friend bool operator!=(const FrameIterator &a, const FrameIterator &b)
-    {
-      if (a.segments == nullptr)
-        return b.segments != nullptr;
-      return a.curSegment != b.curSegment || a.frameIt != b.frameIt;
-    };
-
-  private:
-    SegmentPtr                   curSegment;
-    std::vector<Frame>::iterator frameIt;
-    SegmentDeque *               segments{};
+    FrameIterator(SegmentPtr segment, FramePt frame) : segment(segment), frame(frame) {}
+    bool       isNull() { return this->segment == nullptr || this->frame == nullptr; }
+    SegmentPtr segment;
+    FramePt    frame;
   };
-
-  FrameIterator begin();
-  FrameIterator end();
 
   // The downloader will push downloaded segments in here (and may get blocked if the buffer is
   // full)

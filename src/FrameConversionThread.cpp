@@ -43,7 +43,8 @@ void FrameConversionThread::runConversion()
 
     DEBUG("Conversion Thread: Convert Frame " << frameCounter);
     convertYUVToImage(
-        frameIt->rawYUVData, frameIt->rgbImage, frameIt->pixelFormat, frameIt->frameSize);
+        frameIt.frame->rawYUVData, frameIt.frame->rgbImage, frameIt.frame->pixelFormat, frameIt.frame->frameSize);
+    frameIt.frame->frameState = FrameState::ConvertedToRGB;
     this->conversionRunning.store(false);
     DEBUG("Conversion Thread: Frame " << frameCounter << " done.");
     frameCounter++;

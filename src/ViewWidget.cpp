@@ -51,10 +51,10 @@ void ViewWidget::paintEvent(QPaintEvent *)
 {
   QPainter painter(this);
 
-  if (this->curFrame->isNull())
+  if (this->curFrame.isNull())
     return;
 
-  auto &rgbImage = (*this->curFrame)->rgbImage;
+  auto &rgbImage = this->curFrame.frame->rgbImage;
   if (!rgbImage.isNull())
   {
     int x = (this->width() - rgbImage.width()) / 2;
@@ -226,11 +226,11 @@ void ViewWidget::timerEvent(QTimerEvent *event)
 
   auto                         segmentBuffer = this->playbackController->getSegmentBuffer();
   SegmentBuffer::FrameIterator displayFrame;
-  if (!this->curFrame)
+  if (this->curFrame.isNull())
     displayFrame = segmentBuffer->getFirstFrameToDisplay();
   else
-    displayFrame = segmentBuffer->getNextFrameToDisplay(*this->curFrame);
-  if (displayFrame == segmentBuffer->end())
+    displayFrame = segmentBuffer->getNextFrameToDisplay(this->curFrame);
+  if (displayFrame.isNull())
   {
     DEBUG("Timer even. No new image available.");
     return;

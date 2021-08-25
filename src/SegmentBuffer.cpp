@@ -15,61 +15,41 @@ namespace
 {
 
 SegmentBuffer::SegmentPtr getNextSegmentFromQueue(SegmentBuffer::SegmentPtr    curSegment,
-                                                  SegmentBuffer::SegmentDeque *segmentDeque)
+                                                  const SegmentBuffer::SegmentDeque &segments)
 {
-  for (auto it = segmentDeque->begin(); it != segmentDeque->end(); it++)
+  auto segmentIt = std::find(segments.begin(), segments.end(), curSegment);
+  if (segmentIt == segments.end())
+    return {};
+  segmentIt++;
+  if (segmentIt == segments.end())
+    return {};
+  return *segmentIt;
+}
+
+SegmentBuffer::FrameIterator getNextFrame(const SegmentBuffer::FrameIterator &frame,
+                                          const SegmentBuffer::SegmentDeque & segments)
+{
+  auto segmentIt = std::find(segments.begin(), segments.end(), frame.segment);
+  if (segmentIt == segments.end())
+    return {};
+  auto &segmentFrames = (*segmentIt)->frames;
+  auto segmentFrameIt = std::find(segmentFrames.begin(), segmentFrames.end(), frame.frame);
+  if (segmentFrameIt == segmentFrames.end())
+    return {};
+  auto nextFrameInSegment = (++segmentFrameIt);
+  if (nextFrameInSegment == segmentFrames.end())
   {
-    if (*it == curSegment)
-    {
-      auto nextSegment = it++;
-      if (nextSegment != segmentDeque->end())
-        return *it;
-      break;
-    }
+    auto nextSegment = (++segmentIt);
+    if (nextSegment == segments.end())
+      return {};
+    if ((*nextSegment)->frames.size() == 0)
+      return {};
+    return {*nextSegment, (*nextSegment)->frames.front()};
   }
-  return {};
+  return {frame.segment, *nextFrameInSegment};
 }
 
 } // namespace
-
-SegmentBuffer::FrameIterator::FrameIterator(const FrameIterator &it)
-    : curSegment(it.curSegment), frameIt(it.frameIt), segments(it.segments)
-{
-}
-
-SegmentBuffer::FrameIterator::FrameIterator(SegmentPtr    segment,
-                                            FrameIt       frameIt,
-                                            SegmentDeque *segments)
-    : curSegment(segment), frameIt(frameIt), segments(segments)
-{
-}
-
-SegmentBuffer::FrameIterator &SegmentBuffer::FrameIterator::operator++()
-{
-  this->frameIt++;
-  if (this->frameIt == this->curSegment->frames.end())
-  {
-    auto nextSegment = getNextSegmentFromQueue(this->curSegment, this->segments);
-    if (!nextSegment || nextSegment->frames.size() == 0)
-    {
-      this->curSegment.reset();
-      this->segments = nullptr;
-    }
-    else
-    {
-      this->curSegment = nextSegment;
-      this->frameIt = nextSegment->frames.begin();
-    }
-  }
-  return *this;
-}
-
-SegmentBuffer::FrameIterator SegmentBuffer::FrameIterator::operator++(int)
-{
-  FrameIterator tmp = *this;
-  ++(*this);
-  return tmp;
-}
 
 SegmentBuffer::~SegmentBuffer() { this->abort(); }
 
@@ -79,15 +59,6 @@ void SegmentBuffer::abort()
   this->aborted = true;
   this->eventCV.notify_all();
 }
-
-SegmentBuffer::FrameIterator SegmentBuffer::begin()
-{
-  assert(this->segments.size() > 0);
-  assert(this->segments.front()->frames.size() > 0);
-  return SegmentBuffer::FrameIterator(
-      *this->segments.begin(), this->segments.front()->frames.begin(), &this->segments);
-}
-SegmentBuffer::FrameIterator SegmentBuffer::end() { return {}; }
 
 void SegmentBuffer::pushDownloadedSegment(SegmentPtr segment)
 {
@@ -133,7 +104,7 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToDecode(SegmentPtr segme
   this->eventCV.wait(lk, [this, segmentPtr]() {
     if (this->aborted)
       return true;
-    auto nextSegment = getNextSegmentFromQueue(segmentPtr, &this->segments);
+    auto nextSegment = getNextSegmentFromQueue(segmentPtr, this->segments);
     return bool(nextSegment);
   });
 
@@ -144,7 +115,7 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToDecode(SegmentPtr segme
   }
 
   DEBUG("SegmentBuffer: Next segment to decode ready");
-  return getNextSegmentFromQueue(segmentPtr, &this->segments);
+  return getNextSegmentFromQueue(segmentPtr, this->segments);
 }
 
 SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToConvert()
@@ -165,23 +136,23 @@ SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToConvert()
   }
 
   DEBUG("SegmentBuffer: First frame to convert ready");
-  return this->begin();
+  return {};
 }
 
 SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToConvert(FrameIterator frameIt)
 {
+  assert(!frameIt.isNull());
   DEBUG("Waiting for next frame to convert.");
   this->eventCV.notify_all();
 
   std::unique_lock<std::mutex> lk(this->segmentQueueMutex);
   this->eventCV.wait(lk, [this, frameIt]() {
-    auto nextFrame = frameIt;
-    nextFrame++;
+    auto nextFrame = getNextFrame(frameIt, this->segments);
     return nextFrame.isNull();
   });
 
   DEBUG("Next frame to convert ready.");
-  return frameIt++;
+  return getNextFrame(frameIt, this->segments);
 }
 
 SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToDisplay()
@@ -202,7 +173,7 @@ SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToDisplay()
 
   auto &firstSegment = this->segments.front();
   if (firstSegment->frames.size() == 0 ||
-      firstSegment->frames.front().frameState == FrameState::ConvertedToRGB)
+      firstSegment->frames.front()->frameState != FrameState::ConvertedToRGB)
   {
     DEBUG("SegmentBuffer:: First frame to display not ready yet");
     return {};
@@ -210,11 +181,12 @@ SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToDisplay()
 
   DEBUG("First frame to display ready.");
   this->eventCV.notify_all();
-  return this->begin();
+  return {firstSegment, firstSegment->frames.front()};
 }
 
 SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator frameIt)
 {
+  assert(!frameIt.isNull());
   std::unique_lock<std::mutex> lk(this->segmentQueueMutex);
 
   if (this->aborted)
@@ -223,10 +195,8 @@ SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator 
     return {};
   }
 
-  assert(!frameIt.isNull());
-
-  auto nextFrame = frameIt++;
-  if (nextFrame.isNull() || nextFrame->frameState != FrameState::ConvertedToRGB)
+  auto nextFrame = getNextFrame(frameIt, this->segments);
+  if (nextFrame.isNull() || nextFrame.frame->frameState != FrameState::ConvertedToRGB)
   {
     DEBUG("SegmentBuffer:: Next frame to display not ready yet");
     return {};
