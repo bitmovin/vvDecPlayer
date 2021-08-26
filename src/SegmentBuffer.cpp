@@ -226,27 +226,24 @@ SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToDisplay()
 SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator frameIt)
 {
   assert(!frameIt.isNull());
+  std::shared_lock             lk(this->segmentQueueMutex);
   SegmentBuffer::FrameIterator nextFrame;
+
+  if (this->aborted)
   {
-    std::shared_lock lk(this->segmentQueueMutex);
+    DEBUG("SegmentBuffer:: Next frame to display not ready because aborted");
+    return {};
+  }
 
-    if (this->aborted)
-    {
-      DEBUG("SegmentBuffer:: Next frame to display not ready because aborted");
-      return {};
-    }
-
-    nextFrame = getNextFrame(frameIt, this->segments);
-    if (nextFrame.isNull() || nextFrame.frame->frameState != FrameState::ConvertedToRGB)
-    {
-      DEBUG("SegmentBuffer:: Next frame to display not ready yet");
-      return {};
-    }
+  nextFrame = getNextFrame(frameIt, this->segments);
+  if (nextFrame.isNull() || nextFrame.frame->frameState != FrameState::ConvertedToRGB)
+  {
+    DEBUG("SegmentBuffer:: Next frame to display not ready yet");
+    return {};
   }
 
   if (frameIt.segment != nextFrame.segment)
   {
-    std::unique_lock lk(this->segmentQueueMutex);
     assert(frameIt.segment == this->segments.front());
     this->segments.pop_front();
   }

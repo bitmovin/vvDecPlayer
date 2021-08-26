@@ -29,6 +29,7 @@ public:
 
   void setPlaybackFps(double framerate);
   void onPlayPause();
+  void onStep();
 
 private:
   virtual void paintEvent(QPaintEvent *event) override;
@@ -53,6 +54,8 @@ private:
   double       actualFPS{};
   bool         pause{false};
   virtual void timerEvent(QTimerEvent *event) override;
+
+  void getAndDisplayNextFrame();
 
   PlaybackController *         playbackController{};
   SegmentBuffer::FrameIterator curFrame;

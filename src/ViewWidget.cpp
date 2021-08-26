@@ -244,6 +244,12 @@ void ViewWidget::onPlayPause()
   this->pause = !this->pause;
 }
 
+void ViewWidget::onStep()
+{
+  if (this->pause)
+    this->getAndDisplayNextFrame();
+}
+
 void ViewWidget::timerEvent(QTimerEvent *event)
 {
   if (event && event->timerId() != timer.timerId())
@@ -251,12 +257,16 @@ void ViewWidget::timerEvent(QTimerEvent *event)
   if (this->playbackController == nullptr)
     return;
 
-  if (this->pause)
-  {
-    this->update();
-    return;
-  }
+  DEBUG("Timer event");
 
+  if (this->pause)
+    this->update();
+  else
+    this->getAndDisplayNextFrame();
+}
+
+void ViewWidget::getAndDisplayNextFrame()
+{
   auto                         segmentBuffer = this->playbackController->getSegmentBuffer();
   SegmentBuffer::FrameIterator displayFrame;
   if (this->curFrame.isNull())
@@ -265,16 +275,16 @@ void ViewWidget::timerEvent(QTimerEvent *event)
     displayFrame = segmentBuffer->getNextFrameToDisplay(this->curFrame);
   if (displayFrame.isNull())
   {
-    DEBUG("Timer even. No new image available.");
+    DEBUG("Show next frame. No new image available.");
     return;
   }
 
-  DEBUG("Timer even. Got next image");
+  DEBUG("Show next frame. Got next image");
   this->curFrame = displayFrame;
 
   // Update the FPS counter every 50 frames
   this->timerFPSCounter++;
-  if (this->timerFPSCounter >= 50)
+  if (this->timerFPSCounter > 50)
   {
     auto   newFrameTime         = QTime::currentTime();
     double msecsSinceLastUpdate = (double)this->timerLastFPSTime.msecsTo(newFrameTime);

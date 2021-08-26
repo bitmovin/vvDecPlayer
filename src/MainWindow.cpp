@@ -58,6 +58,11 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     ui.viewWidget->onPlayPause();
     return;
   }
+  else if (key == Qt::Key_Right)
+  {
+    ui.viewWidget->onStep();
+    return;
+  }
 
   QWidget::keyPressEvent(event);
 }
