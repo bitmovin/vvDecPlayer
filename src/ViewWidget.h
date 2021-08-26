@@ -28,6 +28,7 @@ public:
   void setShowProgressGraph(bool drawGraph);
 
   void setPlaybackFps(double framerate);
+  void onPlayPause();
 
 private:
   virtual void paintEvent(QPaintEvent *event) override;
@@ -50,6 +51,7 @@ private:
   QTime        timerLastFPSTime;
   double       targetFPS{};
   double       actualFPS{};
+  bool         pause{false};
   virtual void timerEvent(QTimerEvent *event) override;
 
   PlaybackController *         playbackController{};

@@ -8,7 +8,7 @@
 #include <condition_variable>
 #include <deque>
 #include <iterator>
-#include <mutex>
+#include <shared_mutex>
 
 /* The central storage for segments, frames and all their buffers
  *
@@ -47,6 +47,15 @@ public:
     FramePt    frame;
   };
 
+  struct SegmentRenderInfo
+  {
+    double                  downloadProgress;
+    unsigned                nrFrames{};
+    std::vector<FrameState> frameStates;
+    std::optional<unsigned> indexOfCurFrameInFrames;
+  };
+  std::vector<SegmentRenderInfo> getBufferStatusForRender(FramePt curPlaybackFrame);
+
   // The downloader will push downloaded segments in here (and may get blocked if the buffer is
   // full)
   void pushDownloadedSegment(SegmentPtr segment);
@@ -68,8 +77,8 @@ public:
 private:
   SegmentDeque segments;
 
-  std::condition_variable eventCV;
-  std::mutex              segmentQueueMutex;
+  std::condition_variable_any eventCV;
+  std::shared_mutex           segmentQueueMutex;
 
   bool aborted{false};
 };

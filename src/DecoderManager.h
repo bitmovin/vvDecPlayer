@@ -32,8 +32,5 @@ private:
 
   size_t currentFrameIdxInSegment{};
 
-  // Note: This is just a guess. After decoding one segment we will know.
-  unsigned segmentLength{24};
-
   QString statusText;
 };

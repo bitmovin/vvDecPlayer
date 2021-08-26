@@ -46,6 +46,4 @@ private:
   bool isLocalSource{false};
 
   QString statusText;
-
-  unsigned segmentLength{24};
 };

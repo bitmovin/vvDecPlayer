@@ -8,7 +8,7 @@
 #include <QDebug>
 #include <chrono>
 
-#define DEBUG_DECODER_MANAGER 0
+#define DEBUG_DECODER_MANAGER 1
 #if DEBUG_DECODER_MANAGER
 #include <QDebug>
 #define DEBUG(f) qDebug() << f
@@ -21,8 +21,10 @@ namespace
 
 auto START_CODE = QByteArrayLiteral("\x00\x00\x01");
 
-std::optional<std::size_t> findNextNalInCurFile(QByteArray &data, std::size_t start)
+std::optional<std::size_t> findNextNalInCurFile(const QByteArray &data, std::size_t start)
 {
+  if (start >= size_t(data.size()))
+    return {};
   auto newStart = data.indexOf(START_CODE, start);
   if (newStart < 0)
     return {};
@@ -47,16 +49,14 @@ DecoderManager::DecoderManager(ILogger *logger, SegmentBuffer *segmentBuffer)
   this->decoderThread = std::thread(&DecoderManager::runDecoder, this);
 }
 
-DecoderManager::~DecoderManager() { this->abort(); }
-
-void DecoderManager::abort()
+DecoderManager::~DecoderManager()
 {
-  this->decoderAbort = true;
+  this->abort();
   if (this->decoderThread.joinable())
-  {
     this->decoderThread.join();
-  }
 }
+
+void DecoderManager::abort() { this->decoderAbort = true; }
 
 QString DecoderManager::getStatus()
 {
@@ -70,28 +70,33 @@ void DecoderManager::runDecoder()
   size_t currentDataOffset{};
   auto   segmentIt = this->segmentBuffer->getFirstSegmentToDecode();
 
-  while (true)
+  while (!this->decoderAbort)
   {
     // // Simulate decoding
     // using namespace std::chrono_literals;
     // std::this_thread::sleep_for(1000ms);
+    const auto &data = segmentIt->compressedData;
 
     this->currentFrameIdxInSegment = 0;
-    if (auto firstPos = findNextNalInCurFile(segmentIt->compressedData, 0))
+    if (auto firstPos = findNextNalInCurFile(data, 0))
       currentDataOffset = *firstPos;
-    while (true)
+    while (!this->decoderAbort)
     {
       auto state = this->decoder->state();
 
       if (state == decoder::DecoderState::NeedsMoreData)
       {
         QByteArray nalData;
-        if (auto nextNalStart =
-                findNextNalInCurFile(segmentIt->compressedData, currentDataOffset + 3))
+        if (auto nextNalStart = findNextNalInCurFile(data, currentDataOffset + 3))
         {
           auto length       = *nextNalStart - currentDataOffset;
-          nalData           = segmentIt->compressedData.mid(currentDataOffset, length);
+          nalData           = data.mid(currentDataOffset, length);
           currentDataOffset = *nextNalStart;
+        }
+        else if (currentDataOffset < size_t(data.size()))
+        {
+          nalData           = data.mid(currentDataOffset);
+          currentDataOffset = data.size();
         }
 
         DEBUG("Pushing " << nalData.size() << " bytes");
@@ -107,7 +112,7 @@ void DecoderManager::runDecoder()
         DEBUG("Checking for next frame ");
         if (this->decoder->decodeNextFrame())
         {
-          auto newFrame = std::make_shared<Frame>();
+          auto newFrame         = std::make_shared<Frame>();
           newFrame->rawYUVData  = this->decoder->getRawFrameData();
           newFrame->pixelFormat = this->decoder->getYUVPixelFormat();
           newFrame->frameSize   = this->decoder->getFrameSize();
@@ -115,7 +120,8 @@ void DecoderManager::runDecoder()
           segmentIt->frames.push_back(newFrame);
 
           DEBUG("Retrived frame " << this->currentFrameIdxInSegment << " with size "
-                                  << newFrame.frameSize.width << "x" << newFrame.frameSize.height);
+                                  << newFrame->frameSize.width << "x"
+                                  << newFrame->frameSize.height);
           this->currentFrameIdxInSegment++;
         }
       }
@@ -134,9 +140,6 @@ void DecoderManager::runDecoder()
         DEBUG("Decoding EOF");
         break;
       }
-
-      if (this->decoderAbort)
-        return;
     }
 
     if (this->decoderAbort)
@@ -146,9 +149,6 @@ void DecoderManager::runDecoder()
     this->statusText = "Waiting";
     segmentIt        = this->segmentBuffer->getNextSegmentToDecode(segmentIt);
     this->statusText = "Decoding";
-
-    if (this->decoderAbort)
-      return;
 
     this->decoder->resetDecoder();
   }

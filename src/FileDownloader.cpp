@@ -19,16 +19,14 @@ FileDownloader::FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer)
 {
 }
 
-FileDownloader::~FileDownloader() { this->abort(); }
-
-void FileDownloader::abort()
+FileDownloader::~FileDownloader()
 {
-  this->downloaderAbort = true;
+  this->abort();
   if (this->downloaderThread.joinable())
-  {
     this->downloaderThread.join();
-  }
 }
+
+void FileDownloader::abort() { this->downloaderAbort = true; }
 
 QString FileDownloader::getStatus()
 {
@@ -64,7 +62,7 @@ void FileDownloader::runDownloader()
 
   auto fileIt = this->localFileList.begin();
 
-  while (true)
+  while (!this->downloaderAbort)
   {
     if (this->isLocalSource)
     {
@@ -76,7 +74,7 @@ void FileDownloader::runDownloader()
       }
       else
       {
-        auto newSegment = std::make_shared<Segment>();
+        auto newSegment            = std::make_shared<Segment>();
         newSegment->compressedData = inputFile.readAll();
 
         this->statusText = "Waiting";

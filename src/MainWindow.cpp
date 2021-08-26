@@ -55,7 +55,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
   }
   else if (key == Qt::Key_Space)
   {
-    // ui.playbackController->on_playPauseButton_clicked();
+    ui.viewWidget->onPlayPause();
     return;
   }
 

@@ -17,6 +17,7 @@ PlaybackController::~PlaybackController()
   this->downloader->abort();
   this->decoder->abort();
   this->conversion->abort();
+  this->segmentBuffer.abort();
 }
 
 void PlaybackController::reset()
