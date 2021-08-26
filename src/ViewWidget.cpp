@@ -5,6 +5,7 @@
 
 #include <QPainter>
 #include <QPalette>
+#include <QRectF>
 #include <QTimerEvent>
 
 #define DEBUG_WIDGET 0
@@ -28,10 +29,6 @@ ViewWidget::ViewWidget(QWidget *parent) : QWidget(parent)
   pal.setColor(QPalette::Window, Qt::black);
   this->setAutoFillBackground(true);
   this->setPalette(pal);
-
-  double frameRate     = 24.0;
-  auto   timerInterval = int(1000.0 / frameRate);
-  timer.start(timerInterval, Qt::PreciseTimer, this);
 }
 
 void ViewWidget::setPlaybackController(PlaybackController *playbackController)
@@ -55,11 +52,15 @@ void ViewWidget::paintEvent(QPaintEvent *)
 {
   QPainter painter(this);
 
-  if (!this->currentImage.isNull())
+  if (this->curFrame.isNull())
+    return;
+
+  auto &rgbImage = this->curFrame.frame->rgbImage;
+  if (!rgbImage.isNull())
   {
-    int x = (this->width() - this->currentImage.width()) / 2;
-    int y = (this->height() - this->currentImage.height()) / 2;
-    painter.drawImage(x, y, this->currentImage);
+    int x = (this->width() - rgbImage.width()) / 2;
+    int y = (this->height() - rgbImage.height()) / 2;
+    painter.drawImage(x, y, rgbImage);
   }
 
   this->drawAndUpdateMessages(painter);
@@ -107,7 +108,7 @@ void ViewWidget::drawAndUpdateMessages(QPainter &painter)
 
 void ViewWidget::drawFPSAndStatusText(QPainter &painter)
 {
-  auto text = QString("FPS: %1\n").arg(this->currentFps);
+  auto text = QString("FPS: %1\n").arg(this->actualFPS);
   if (this->playbackController && this->showDebugInfo)
     text += this->playbackController->getStatus();
   auto textSize = QFontMetrics(painter.font()).size(0, text);
@@ -126,38 +127,56 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
   if (!this->playbackController || !this->showProgressGraph)
     return;
 
-  QRect graphRect;
-  graphRect.setSize(QSize(500, 300));
+  QRectF graphRect(0, 0, 500, 300);
   graphRect.moveBottomLeft(QPoint(0, this->height()));
 
   // painter.setBrush(Qt::white);
   // painter.drawRect(graphRect);
 
-  constexpr unsigned blockDistance = 3 + 1;
-  QRect frameRect;
-  frameRect.setSize(QSize(3, 3));
+  const auto colorMap = std::map<FrameState, QColor>(
+      {{FrameState::Decoded, Qt::blue}, {FrameState::ConvertedToRGB, Qt::green}});
+
+  auto bufferState =
+      this->playbackController->getSegmentBuffer()->getBufferStatusForRender(this->curFrame.frame);
+  if (bufferState.empty())
+    return;
+
+  const auto spaceBetweenFrames   = 2.0;
+  const auto spaceBetweenSegments = 1.0;
+  const auto segmentBoxBoarder    = QSizeF(0.5, 1.0);
+
+  auto frameRect = QRectF(QPointF(0, 0), QSizeF(5, 5));
   frameRect.moveBottom(graphRect.bottom() - 5);
 
-  const auto colorMap =
-        std::map<FrameState, QColor>({{FrameState::DownloadQueued, Qt::cyan},
-                                           {FrameState::Downloaded, Qt::blue},
-                                           {FrameState::Decoded, Qt::yellow},
-                                           {FrameState::Converted, Qt::green}});
+  QRectF segmentRect;
+  segmentRect.setHeight(frameRect.height() + segmentBoxBoarder.height() * 2);
+  segmentRect.moveBottom(frameRect.bottom() + segmentBoxBoarder.height());
 
-  const auto leftStart = graphRect.left() + 5;
-  auto info = this->playbackController->getFrameQueueInfo();
-  for (size_t i = 0; i < info.size(); i++)
+  auto segmentLeft = 5;
+  if (auto offset = bufferState.at(0).indexOfCurFrameInFrames)
+    segmentLeft -= *offset * (frameRect.width() + spaceBetweenFrames);
+
+  painter.setPen(Qt::NoPen);
+  for (auto &segment : bufferState)
   {
-    frameRect.moveLeft(leftStart + int(blockDistance * i));
-    
-    if (info[i].isBeingProcessed)
-      painter.setPen(Qt::black);
-    else
-      painter.setPen(Qt::NoPen);
-    
-    painter.setBrush(colorMap.at(info[i].frameState));
+    segmentRect.setWidth(segment.nrFrames * frameRect.width() +
+                         (segment.nrFrames - 1) * spaceBetweenFrames +
+                         segmentBoxBoarder.width() * 2);
+    segmentRect.moveLeft(segmentLeft);
 
-    painter.drawRect(frameRect);
+    painter.setBrush(Qt::white);
+    painter.drawRect(segmentRect);
+
+    auto frameLeft = segmentRect.left() + segmentBoxBoarder.width();
+    for (auto &frameState : segment.frameStates)
+    {
+      frameRect.moveLeft(frameLeft);
+      painter.setBrush(colorMap.at(frameState));
+      painter.drawRect(frameRect);
+      frameLeft += frameRect.width() + spaceBetweenFrames;
+    }
+
+    segmentLeft += segmentRect.width() + spaceBetweenSegments;
   }
 
   // // Next the graph
@@ -168,7 +187,7 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
 
   // QRect segmentRect;
   // segmentRect.setWidth(blockDistance * 24);
-  
+
   // auto nrSegmentsToDraw = (info.size() + 23) / 24;
   // auto segmentIt = segmentData.rbegin();
   // for (size_t i = 0; i < nrSegmentsToDraw; i++)
@@ -204,36 +223,77 @@ void ViewWidget::setShowProgressGraph(bool showGraph)
   this->update();
 }
 
+void ViewWidget::setPlaybackFps(double framerate)
+{
+  this->targetFPS = framerate;
+
+  if (framerate == 0.0)
+    timer.stop();
+  else
+  {
+    auto timerInterval = int(1000.0 / this->targetFPS);
+    timer.start(timerInterval, Qt::PreciseTimer, this);
+  }
+}
+
+void ViewWidget::onPlayPause()
+{
+  if (this->targetFPS <= 0)
+    return;
+
+  this->pause = !this->pause;
+}
+
+void ViewWidget::onStep()
+{
+  if (this->pause)
+    this->getAndDisplayNextFrame();
+}
+
 void ViewWidget::timerEvent(QTimerEvent *event)
 {
   if (event && event->timerId() != timer.timerId())
     return QWidget::timerEvent(event);
   if (this->playbackController == nullptr)
     return;
-  auto frameBuffer = this->playbackController->getFrameConversionBuffer();
-  if (frameBuffer == nullptr)
-    return;
 
-  if (auto nextImage = frameBuffer->getNextImage())
-  {
-    DEBUG("Timer even. Got next image");
-    this->currentImage = *nextImage;
-  }
+  DEBUG("Timer event");
+
+  if (this->pause)
+    this->update();
   else
+    this->getAndDisplayNextFrame();
+}
+
+void ViewWidget::getAndDisplayNextFrame()
+{
+  auto                         segmentBuffer = this->playbackController->getSegmentBuffer();
+  SegmentBuffer::FrameIterator displayFrame;
+  if (this->curFrame.isNull())
+    displayFrame = segmentBuffer->getFirstFrameToDisplay();
+  else
+    displayFrame = segmentBuffer->getNextFrameToDisplay(this->curFrame);
+  if (displayFrame.isNull())
   {
-    DEBUG("Timer even. No new image available.");
+    DEBUG("Show next frame. No new image available.");
     return;
   }
+
+  DEBUG("Show next frame. Got next image");
+  this->curFrame = displayFrame;
 
   // Update the FPS counter every 50 frames
   this->timerFPSCounter++;
-  if (this->timerFPSCounter >= 50)
+  if (this->timerFPSCounter > 50)
   {
     auto   newFrameTime         = QTime::currentTime();
     double msecsSinceLastUpdate = (double)this->timerLastFPSTime.msecsTo(newFrameTime);
 
     // Print the frames per second as float with one digit after the decimal dot.
-    this->currentFps = (50.0 / (msecsSinceLastUpdate / 1000.0));
+    if (msecsSinceLastUpdate == 0)
+      this->actualFPS = 0.0;
+    else
+      this->actualFPS = (50.0 / (msecsSinceLastUpdate / 1000.0));
 
     this->timerLastFPSTime = QTime::currentTime();
     this->timerFPSCounter  = 0;

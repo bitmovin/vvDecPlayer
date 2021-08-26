@@ -27,6 +27,10 @@ public:
   void setShowDebugInfo(bool showDebugInfo);
   void setShowProgressGraph(bool drawGraph);
 
+  void setPlaybackFps(double framerate);
+  void onPlayPause();
+  void onStep();
+
 private:
   virtual void paintEvent(QPaintEvent *event) override;
 
@@ -46,11 +50,15 @@ private:
   QBasicTimer  timer;
   int          timerFPSCounter{};
   QTime        timerLastFPSTime;
-  double       currentFps{};
+  double       targetFPS{};
+  double       actualFPS{};
+  bool         pause{false};
   virtual void timerEvent(QTimerEvent *event) override;
 
-  PlaybackController *playbackController{};
-  QImage              currentImage;
+  void getAndDisplayNextFrame();
+
+  PlaybackController *         playbackController{};
+  SegmentBuffer::FrameIterator curFrame;
 
   unsigned frameSegmentOffset{};
 

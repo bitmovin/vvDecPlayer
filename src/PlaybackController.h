@@ -4,18 +4,16 @@
 #pragma once
 
 #include "DecoderManager.h"
-#include "FileDownloadManager.h"
-#include "FrameConversionBuffer.h"
+#include "FileDownloader.h"
+#include "FrameConversionThread.h"
 #include "ILogger.h"
-#include <common/RawFrame.h>
+#include <SegmentBuffer.h>
+#include <common/Frame.h>
 
 #include <QDir>
-#include <QObject>
 
-class PlaybackController : public QObject
+class PlaybackController
 {
-  Q_OBJECT
-
 public:
   PlaybackController(ILogger *logger);
   ~PlaybackController();
@@ -24,20 +22,17 @@ public:
 
   void openDirectory(QDir path, QString segmentPattern);
 
-  FrameConversionBuffer *getFrameConversionBuffer() { return this->frameConversionBuffer.get(); }
-
   QString getStatus();
-  auto    getFrameQueueInfo() -> std::vector<FrameStatus>;
   auto    getLastSegmentsData() -> std::deque<SegmentData>;
 
-public slots:
-  void onSegmentReadyForDecode();
-  void onDecodeOfSegmentDone();
+  SegmentBuffer *getSegmentBuffer() { return &this->segmentBuffer; }
 
 private:
   ILogger *logger{};
 
-  std::unique_ptr<FileDownloadManager>   fileDownloadManager;
-  std::unique_ptr<DecoderManager>        decoderManager;
-  std::unique_ptr<FrameConversionBuffer> frameConversionBuffer;
+  std::unique_ptr<FileDownloader>        downloader;
+  std::unique_ptr<DecoderManager>        decoder;
+  std::unique_ptr<FrameConversionThread> conversion;
+
+  SegmentBuffer segmentBuffer;
 };
