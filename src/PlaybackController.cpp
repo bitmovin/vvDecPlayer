@@ -14,7 +14,6 @@ PlaybackController::PlaybackController(ILogger *logger) : logger(logger)
 
 PlaybackController::~PlaybackController()
 {
-  this->downloader->abort();
   this->decoder->abort();
   this->conversion->abort();
   this->segmentBuffer.abort();
@@ -33,6 +32,11 @@ void PlaybackController::reset()
 void PlaybackController::openDirectory(QDir path, QString segmentPattern)
 {
   this->downloader->openDirectory(path, segmentPattern);
+}
+
+void PlaybackController::openURL(QString url, QString segmentPattern, unsigned segmentNrMax)
+{
+  this->downloader->openURL(url, segmentPattern, segmentNrMax);
 }
 
 QString PlaybackController::getStatus()

@@ -6,7 +6,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Unit test debug",
+      "name": "Debug",
       "type": "cppvsdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/debug/vvDecPlayer.exe",
@@ -18,7 +18,7 @@
       "visualizerFile": "D:/Projekte/qt-natvis/qt5.natvis.xml"
   },
   {
-    "name": "Unit test release",
+    "name": "Release+debug",
     "type": "cppvsdbg",
     "request": "launch",
     "program": "${workspaceFolder}/build/releaseWithDebug/vvDecPlayer.exe",

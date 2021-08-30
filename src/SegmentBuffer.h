@@ -9,6 +9,7 @@
 #include <deque>
 #include <iterator>
 #include <shared_mutex>
+#include <QObject>
 
 /* The central storage for segments, frames and all their buffers
  *
@@ -19,8 +20,10 @@
  * are reached.
  * Segments are automatically removed from the list once all frames were displayed.
  */
-class SegmentBuffer
+class SegmentBuffer : public QObject
 {
+  Q_OBJECT
+
 public:
   SegmentBuffer() = default;
   ~SegmentBuffer();
@@ -56,8 +59,7 @@ public:
   };
   std::vector<SegmentRenderInfo> getBufferStatusForRender(FramePt curPlaybackFrame);
 
-  // The downloader will push downloaded segments in here (and may get blocked if the buffer is
-  // full)
+  // The downloader will push downloaded segments in here. This will not block.
   void pushDownloadedSegment(SegmentPtr segment);
 
   // The decoder will get segments to decode here (and may get blocked if too many
@@ -74,7 +76,12 @@ public:
   FrameIterator getFirstFrameToDisplay();
   FrameIterator getNextFrameToDisplay(FrameIterator frameIt);
 
+signals:
+  void startNextDownload();
+
 private:
+  void tryToStartNextDownload();
+
   SegmentDeque segments;
 
   std::condition_variable_any eventCV;

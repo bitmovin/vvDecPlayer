@@ -4,9 +4,10 @@
 #pragma once
 
 #include "ILogger.h"
+#include <QNetworkAccessManager>
+#include <SegmentBuffer.h>
 #include <common/Segment.h>
 #include <common/typedef.h>
-#include <SegmentBuffer.h>
 
 #include <QDir>
 #include <deque>
@@ -22,28 +23,38 @@
  * nrBytes). The DownloadFilePlanner can then take that data and add the next file to download to
  * the list.
  */
-class FileDownloader
+class FileDownloader : public QObject
 {
+  Q_OBJECT
+
 public:
   FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer);
-  ~FileDownloader();
-  void abort();
+  ~FileDownloader() = default;
 
   void openDirectory(QDir path, QString segmentPattern);
+  void openURL(QString baseUrl, QString segmentPattern, unsigned segmentNrMax);
 
   QString getStatus();
+
+signals:
+  void downloadFinished();
+
+private slots:
+  void downloadNextFile();
+
+  void replyFinished(QNetworkReply *reply);
+  void updateDownloadProgress(int64_t val, int64_t max);
 
 private:
   ILogger *      logger{};
   SegmentBuffer *segmentBuffer{};
 
-  void        runDownloader();
-  std::thread downloaderThread;
-  bool        downloaderAbort{false};
-
-  std::vector<QString> localFileList;
+  std::vector<QString>           fileList;
+  std::vector<QString>::iterator fileListIt;
 
   bool isLocalSource{false};
 
   QString statusText;
+
+  QNetworkAccessManager networkManager;
 };

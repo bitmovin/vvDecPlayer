@@ -85,15 +85,8 @@ SegmentBuffer::getBufferStatusForRender(FramePt curPlaybackFrame)
 
 void SegmentBuffer::pushDownloadedSegment(SegmentPtr segment)
 {
-  DEBUG("SegmentBuffer: Try push downloaded segment");
-  std::unique_lock lk(this->segmentQueueMutex);
-  this->eventCV.wait(lk, [this]() {
-    if (this->aborted)
-      return true;
-    constexpr size_t MAX_SEGMENTS_IN_BUFFER = 6;
-    return this->segments.size() < MAX_SEGMENTS_IN_BUFFER;
-  });
-
+  DEBUG("SegmentBuffer: Got downloaded segment");
+  
   if (this->aborted)
   {
     DEBUG("SegmentBuffer: Not Pushed downloaded segment because of abort");
@@ -104,6 +97,7 @@ void SegmentBuffer::pushDownloadedSegment(SegmentPtr segment)
   this->segments.push_back(segment);
 
   this->eventCV.notify_all();
+  this->tryToStartNextDownload();
 }
 
 SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToDecode()
@@ -246,9 +240,17 @@ SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator 
   {
     assert(frameIt.segment == this->segments.front());
     this->segments.pop_front();
+    this->tryToStartNextDownload();
   }
 
   DEBUG("Next frame to display ready.");
   this->eventCV.notify_all();
   return nextFrame;
+}
+
+void SegmentBuffer::tryToStartNextDownload()
+{
+  constexpr auto MAX_DOWNLOADED_SEGMENTS_IN_QUEUE = 6;
+  if (this->segments.size() < MAX_DOWNLOADED_SEGMENTS_IN_QUEUE)
+    emit startNextDownload();
 }

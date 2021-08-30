@@ -12,6 +12,7 @@
 #include <QMessageBox>
 
 constexpr auto DEFAULT_SEGMENT_PATTERN = "segment-%i.vvc";
+constexpr auto SINTEL_SEGMENT_NR       = 887;
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
@@ -119,15 +120,28 @@ void MainWindow::createMenusAndActions()
   QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
   fileMenu->addAction("Open local folder ...", this, &MainWindow::openLocalFolder);
   fileMenu->addSeparator();
-  auto recentFileMenu = fileMenu->addMenu("Predefined FIles");
+
+  auto presetFiles = fileMenu->addMenu("Predefined Files");
   for (int i = 0; i < 1; i++)
   {
     this->fixedFileActions[i] = new QAction(this);
     this->fixedFileActions[i]->setText("Local test Sintel");
     this->fixedFileActions[i]->setData("D:/Bitmovin/Issues/EN-9928-VVEnc/Sintel720p");
-    connect(this->fixedFileActions[i].data(), &QAction::triggered, this, &MainWindow::openFixedFile);
-    recentFileMenu->addAction(this->fixedFileActions[i]);
+    connect(
+        this->fixedFileActions[i].data(), &QAction::triggered, this, &MainWindow::openFixedFile);
+    presetFiles->addAction(this->fixedFileActions[i]);
   }
+  auto presetURLs = fileMenu->addMenu("Predefined URLs");
+  for (int i = 0; i < 1; i++)
+  {
+    this->fixedURLActions[i] = new QAction(this);
+    this->fixedURLActions[i]->setText("Remote Sintel AWS S3");
+    this->fixedURLActions[i]->setData(
+        "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/Sintel720p/");
+    connect(this->fixedURLActions[i].data(), &QAction::triggered, this, &MainWindow::openFixedUrl);
+    presetURLs->addAction(this->fixedURLActions[i]);
+  }
+
   fileMenu->addSeparator();
   fileMenu->addAction("Exit", this, &MainWindow::close);
 
@@ -265,6 +279,17 @@ void MainWindow::openFixedFile()
   {
     auto pathToOpen = action->data().toString();
     this->playbackController->openDirectory(pathToOpen, DEFAULT_SEGMENT_PATTERN);
+    this->ui.viewWidget->setPlaybackFps(24.0);
+  }
+}
+
+void MainWindow::openFixedUrl()
+{
+  auto action = qobject_cast<QAction *>(sender());
+  if (action)
+  {
+    auto pathToOpen = action->data().toString();
+    this->playbackController->openURL(pathToOpen, DEFAULT_SEGMENT_PATTERN, SINTEL_SEGMENT_NR);
     this->ui.viewWidget->setPlaybackFps(24.0);
   }
 }

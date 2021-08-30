@@ -5,6 +5,7 @@
 
 #include <QDebug>
 #include <QFileInfo>
+#include <QNetworkReply>
 
 #define DEBUG_DOWNLOADER 0
 #if DEBUG_DOWNLOADER
@@ -17,20 +18,48 @@
 FileDownloader::FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer)
     : logger(logger), segmentBuffer(segmentBuffer)
 {
+  DEBUG("FileDownloader - Built with SSL version: " << QSslSocket::sslLibraryBuildVersionString());
+  DEBUG("FileDownloader - Found SSL library: " << QSslSocket::sslLibraryVersionString());
+  DEBUG("FileDownloader - SSL supported: " << QSslSocket::supportsSsl());
+
+  connect(&this->networkManager,
+          &QNetworkAccessManager::finished,
+          this,
+          &FileDownloader::replyFinished);
+
+  connect(
+      segmentBuffer, &SegmentBuffer::startNextDownload, this, &FileDownloader::downloadNextFile);
 }
 
-FileDownloader::~FileDownloader()
+QString FileDownloader::getStatus() { return this->statusText; }
+
+void FileDownloader::replyFinished(QNetworkReply *reply)
 {
-  this->abort();
-  if (this->downloaderThread.joinable())
-    this->downloaderThread.join();
+  DEBUG("Reply finished");
+  if (reply->error() != QNetworkReply::NoError)
+  {
+    DEBUG("Error " << reply->errorString());
+    this->logger->addMessage(QString("Download Error: %s").arg(reply->errorString()),
+                             LoggingPriority::Error);
+    return;
+  }
+
+  auto newSegment            = std::make_shared<Segment>();
+  newSegment->compressedData = reply->readAll();
+  this->segmentBuffer->pushDownloadedSegment(newSegment);
+  emit downloadFinished();
+
+  this->statusText = "Waiting";
 }
 
-void FileDownloader::abort() { this->downloaderAbort = true; }
-
-QString FileDownloader::getStatus()
+void FileDownloader::updateDownloadProgress(int64_t val, int64_t max)
 {
-  return (this->downloaderAbort ? "Abort " : "") + this->statusText;
+  DEBUG("Download Progress V " << val << " MAX " << max);
+  if (max > 0 && val > 0)
+  {
+    auto downloadPercent = val * 100 / max;
+    this->statusText     = QString("Downloading (%1)").arg(downloadPercent);
+  }
 }
 
 void FileDownloader::openDirectory(QDir path, QString segmentPattern)
@@ -44,7 +73,7 @@ void FileDownloader::openDirectory(QDir path, QString segmentPattern)
       break;
 
     auto fullFilePath = path.filePath(file);
-    this->localFileList.push_back(fullFilePath);
+    this->fileList.push_back(fullFilePath);
 
     segmentNr++;
   }
@@ -52,43 +81,59 @@ void FileDownloader::openDirectory(QDir path, QString segmentPattern)
   this->logger->addMessage(QString("Found %1 local files to play.").arg(segmentNr),
                            LoggingPriority::Info);
 
-  this->isLocalSource    = true;
-  this->downloaderThread = std::thread(&FileDownloader::runDownloader, this);
+  this->isLocalSource = true;
+  this->fileListIt    = this->fileList.begin();
+  this->downloadNextFile();
 }
 
-void FileDownloader::runDownloader()
+void FileDownloader::openURL(QString baseUrl, QString segmentPattern, unsigned segmentNrMax)
 {
-  this->logger->addMessage("Started downloader thread", LoggingPriority::Info);
-
-  auto fileIt = this->localFileList.begin();
-
-  while (!this->downloaderAbort)
+  DEBUG("Open URL " << baseUrl);
+  // We don't check these here. If these don't exist we will get a download error later.
+  for (auto i = 0u; i < segmentNrMax; i++)
   {
-    if (this->isLocalSource)
-    {
-      QFile inputFile(*fileIt);
-      if (!inputFile.open(QIODevice::ReadOnly))
-      {
-        this->logger->addMessage(QString("Error reading file %1").arg(*fileIt),
-                                 LoggingPriority::Error);
-      }
-      else
-      {
-        auto newSegment            = std::make_shared<Segment>();
-        newSegment->compressedData = inputFile.readAll();
-
-        this->statusText = "Waiting";
-        this->segmentBuffer->pushDownloadedSegment(newSegment);
-        this->statusText = "Running";
-      }
-    }
-    else
-    {
-      assert(false);
-    }
-
-    fileIt++;
+    auto seg = segmentPattern;
+    seg.replace("%i", QString("%1").arg(i));
+    auto segmentUrl = baseUrl + seg;
+    this->fileList.push_back(segmentUrl);
   }
 
-  this->statusText = "Finished";
+  this->logger->addMessage(QString("Added %1 remote URLs to file list.").arg(segmentNrMax),
+                           LoggingPriority::Info);
+
+  this->isLocalSource = false;
+  this->fileListIt    = this->fileList.begin();
+  this->downloadNextFile();
+}
+
+void FileDownloader::downloadNextFile()
+{
+  QNetworkAccessManager networkManager;
+
+  if (this->isLocalSource)
+  {
+    QFile inputFile(*this->fileListIt);
+    if (!inputFile.open(QIODevice::ReadOnly))
+      this->logger->addMessage(QString("Error reading file %1").arg(*this->fileListIt),
+                               LoggingPriority::Error);
+    else
+    {
+      // For loca files the download finished immediately
+      auto newSegment            = std::make_shared<Segment>();
+      newSegment->compressedData = inputFile.readAll();
+      this->segmentBuffer->pushDownloadedSegment(newSegment);
+      emit downloadFinished();
+    }
+  }
+  else
+  {
+    DEBUG("Start download of file " << *this->fileListIt);
+
+    QNetworkRequest request(*this->fileListIt);
+    QNetworkReply * reply = this->networkManager.get(request);
+    connect(reply, &QNetworkReply::downloadProgress, this, &FileDownloader::updateDownloadProgress);
+    this->statusText = "Downloading";
+  }
+
+  this->fileListIt++;
 }
