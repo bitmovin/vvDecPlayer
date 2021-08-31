@@ -55,10 +55,12 @@ private:
   bool         pause{false};
   virtual void timerEvent(QTimerEvent *event) override;
 
-  void getAndDisplayNextFrame();
+  void getNextFrame();
 
   PlaybackController *         playbackController{};
   SegmentBuffer::FrameIterator curFrame;
+
+  int debugInfoRenderMaxWidth{};
 
   unsigned frameSegmentOffset{};
 

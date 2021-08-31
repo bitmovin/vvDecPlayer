@@ -5,11 +5,11 @@
 
 #include <common/Segment.h>
 
+#include <QObject>
 #include <condition_variable>
 #include <deque>
 #include <iterator>
 #include <shared_mutex>
-#include <QObject>
 
 /* The central storage for segments, frames and all their buffers
  *
@@ -53,7 +53,7 @@ public:
   struct SegmentRenderInfo
   {
     double                  downloadProgress{};
-    unsigned                sizeInBytes{};
+    std::size_t             sizeInBytes{};
     unsigned                nrFrames{};
     std::vector<FrameState> frameStates;
     std::optional<unsigned> indexOfCurFrameInFrames;

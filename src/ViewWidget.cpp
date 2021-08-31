@@ -55,6 +55,8 @@ void ViewWidget::paintEvent(QPaintEvent *)
   if (this->curFrame.isNull())
     return;
 
+  DEBUG("Paint event");
+
   auto &rgbImage = this->curFrame.frame->rgbImage;
   if (!rgbImage.isNull())
   {
@@ -112,6 +114,14 @@ void ViewWidget::drawFPSAndStatusText(QPainter &painter)
   if (this->playbackController && this->showDebugInfo)
     text += this->playbackController->getStatus();
   auto textSize = QFontMetrics(painter.font()).size(0, text);
+
+  if (this->showDebugInfo)
+  {
+    if (textSize.width() > this->debugInfoRenderMaxWidth)
+      this->debugInfoRenderMaxWidth = textSize.width();
+    else
+      textSize.setWidth(this->debugInfoRenderMaxWidth);
+  }
 
   QRect textRect;
   textRect.setSize(textSize);
@@ -255,7 +265,7 @@ void ViewWidget::onPlayPause()
 void ViewWidget::onStep()
 {
   if (this->pause)
-    this->getAndDisplayNextFrame();
+    this->getNextFrame();
 }
 
 void ViewWidget::timerEvent(QTimerEvent *event)
@@ -267,13 +277,13 @@ void ViewWidget::timerEvent(QTimerEvent *event)
 
   DEBUG("Timer event");
 
-  if (this->pause)
-    this->update();
-  else
-    this->getAndDisplayNextFrame();
+  if (!this->pause)
+    this->getNextFrame();
+
+  this->update();
 }
 
-void ViewWidget::getAndDisplayNextFrame()
+void ViewWidget::getNextFrame()
 {
   auto                         segmentBuffer = this->playbackController->getSegmentBuffer();
   SegmentBuffer::FrameIterator displayFrame;
@@ -310,6 +320,4 @@ void ViewWidget::getAndDisplayNextFrame()
   this->frameSegmentOffset++;
   if (this->frameSegmentOffset > 24)
     this->frameSegmentOffset = 0;
-
-  this->update();
 }
