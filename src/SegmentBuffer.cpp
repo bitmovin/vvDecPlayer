@@ -69,6 +69,7 @@ SegmentBuffer::getBufferStatusForRender(FramePt curPlaybackFrame)
   {
     SegmentRenderInfo segmentState;
     segmentState.downloadProgress = segment->downloadProgress;
+    segmentState.sizeInBytes      = segment->compressedSizeBytes;
     segmentState.nrFrames         = segment->neFrames;
     unsigned frameCounter         = 0;
     for (auto &frame : segment->frames)

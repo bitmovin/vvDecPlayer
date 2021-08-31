@@ -148,61 +148,69 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
   auto frameRect = QRectF(QPointF(0, 0), QSizeF(5, 5));
   frameRect.moveBottom(graphRect.bottom() - 5);
 
-  QRectF segmentRect;
-  segmentRect.setHeight(frameRect.height() + segmentBoxBoarder.height() * 2);
-  segmentRect.moveBottom(frameRect.bottom() + segmentBoxBoarder.height());
-
-  auto segmentLeft = 5;
+  auto firstSegmentLeft = 5;
   if (auto offset = bufferState.at(0).indexOfCurFrameInFrames)
-    segmentLeft -= *offset * (frameRect.width() + spaceBetweenFrames);
+    firstSegmentLeft -= *offset * (frameRect.width() + spaceBetweenFrames);
 
-  painter.setPen(Qt::NoPen);
-  for (auto &segment : bufferState)
   {
-    segmentRect.setWidth(segment.nrFrames * frameRect.width() +
-                         (segment.nrFrames - 1) * spaceBetweenFrames +
-                         segmentBoxBoarder.width() * 2);
-    segmentRect.moveLeft(segmentLeft);
+    QRectF segmentRect;
+    segmentRect.setHeight(frameRect.height() + segmentBoxBoarder.height() * 2);
+    segmentRect.moveBottom(frameRect.bottom() + segmentBoxBoarder.height());
 
-    painter.setBrush(Qt::white);
-    painter.drawRect(segmentRect);
+    auto segmentLeft = firstSegmentLeft;
 
-    auto frameLeft = segmentRect.left() + segmentBoxBoarder.width();
-    for (auto &frameState : segment.frameStates)
+    painter.setPen(Qt::NoPen);
+    for (auto &segment : bufferState)
     {
-      frameRect.moveLeft(frameLeft);
-      painter.setBrush(colorMap.at(frameState));
-      painter.drawRect(frameRect);
-      frameLeft += frameRect.width() + spaceBetweenFrames;
-    }
+      segmentRect.setWidth(segment.nrFrames * frameRect.width() +
+                           (segment.nrFrames - 1) * spaceBetweenFrames +
+                           segmentBoxBoarder.width() * 2);
+      segmentRect.moveLeft(segmentLeft);
 
-    segmentLeft += segmentRect.width() + spaceBetweenSegments;
+      painter.setBrush(Qt::white);
+      painter.drawRect(segmentRect);
+
+      auto frameLeft = segmentRect.left() + segmentBoxBoarder.width();
+      for (auto &frameState : segment.frameStates)
+      {
+        frameRect.moveLeft(frameLeft);
+        painter.setBrush(colorMap.at(frameState));
+        painter.drawRect(frameRect);
+        frameLeft += frameRect.width() + spaceBetweenFrames;
+      }
+
+      segmentLeft += segmentRect.width() + spaceBetweenSegments;
+    }
   }
 
-  // // Next the graph
-  // auto segmentData = this->playbackController->getLastSegmentsData();
+  {
+    // Next the bitrate graph
+    auto segmentLeft = firstSegmentLeft;
 
-  // painter.setPen(Qt::black);
-  // painter.setBrush(Qt::cyan);
+    for (auto &segment : bufferState)
+    {
+      auto absHeight = segment.sizeInBytes / 1000;
 
-  // QRect segmentRect;
-  // segmentRect.setWidth(blockDistance * 24);
+      QRectF bitrateBarRect;
+      bitrateBarRect.setWidth(segment.nrFrames * frameRect.width() +
+                              (segment.nrFrames - 1) * spaceBetweenFrames +
+                              segmentBoxBoarder.width() * 2);
+      bitrateBarRect.moveLeft(segmentLeft);
+      bitrateBarRect.setHeight(absHeight * segment.downloadProgress / 100);
+      bitrateBarRect.moveBottom(frameRect.top() - 5);
+      painter.setBrush(Qt::darkCyan);
+      painter.setPen(Qt::NoPen);
+      painter.drawRect(bitrateBarRect);
 
-  // auto nrSegmentsToDraw = (info.size() + 23) / 24;
-  // auto segmentIt = segmentData.rbegin();
-  // for (size_t i = 0; i < nrSegmentsToDraw; i++)
-  // {
-  //   segmentRect.setHeight(int(segmentIt->bitrate) / 5000);
-  //   segmentRect.moveBottom(graphRect.bottom() - 15);
-  //   auto xOffset = ((nrSegmentsToDraw - i) * 24 - this->frameSegmentOffset) * blockDistance;
-  //   segmentRect.moveLeft(int(xOffset));
+      bitrateBarRect.setHeight(absHeight);
+      bitrateBarRect.moveBottom(frameRect.top() - 5);
+      painter.setBrush(Qt::NoBrush);
+      painter.setPen(Qt::cyan);
+      painter.drawRect(bitrateBarRect);
 
-  //   painter.drawRect(segmentRect);
-
-  //   segmentIt++;
-  //   if (segmentIt == segmentData.rend())
-  //     break;
-  // }
+      segmentLeft += bitrateBarRect.width() + spaceBetweenSegments;
+    }
+  }
 }
 
 void ViewWidget::clearMessages()

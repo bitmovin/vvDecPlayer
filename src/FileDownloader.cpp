@@ -46,9 +46,11 @@ void FileDownloader::replyFinished(QNetworkReply *reply)
     return;
   }
 
-  this->currentSegment->compressedData   = reply->readAll();
-  this->currentSegment->downloadProgress = 100.0;
-  this->currentSegment->downloadFinished = true;
+  this->currentSegment->compressedData      = reply->readAll();
+  this->currentSegment->downloadProgress    = 100.0;
+  this->currentSegment->downloadFinished    = true;
+  this->currentSegment->compressedSizeBytes = this->currentSegment->compressedData.size();
+
   emit downloadFinished();
 
   this->statusText = "Waiting";
@@ -61,7 +63,10 @@ void FileDownloader::updateDownloadProgress(int64_t val, int64_t max)
   {
     auto downloadPercent = val * 100 / max;
     if (this->currentSegment)
-      this->currentSegment->downloadProgress = Segment::Percent(downloadPercent);
+    {
+      this->currentSegment->downloadProgress    = Segment::Percent(downloadPercent);
+      this->currentSegment->compressedSizeBytes = size_t(max);
+    }
   }
 }
 
@@ -126,9 +131,10 @@ void FileDownloader::downloadNextFile()
     {
       // For local files the download finishes immediately
       DEBUG("Loading local file " << *this->fileListIt);
-      this->currentSegment->compressedData   = inputFile.readAll();
-      this->currentSegment->downloadProgress = 100.0;
-      this->currentSegment->downloadFinished = true;
+      this->currentSegment->compressedData      = inputFile.readAll();
+      this->currentSegment->downloadProgress    = 100.0;
+      this->currentSegment->downloadFinished    = true;
+      this->currentSegment->compressedSizeBytes = this->currentSegment->compressedData.size();
       emit downloadFinished();
     }
   }

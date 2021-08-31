@@ -52,7 +52,8 @@ public:
 
   struct SegmentRenderInfo
   {
-    double                  downloadProgress;
+    double                  downloadProgress{};
+    unsigned                sizeInBytes{};
     unsigned                nrFrames{};
     std::vector<FrameState> frameStates;
     std::optional<unsigned> indexOfCurFrameInFrames;
