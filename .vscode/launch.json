@@ -15,17 +15,28 @@
       "cwd": "${workspaceFolder}",
       "environment": [],
       "visualizerFile": "D:/Projekte/qt-natvis/qt5.natvis.xml"
-  },
-  {
-    "name": "Release+debug",
-    "type": "cppvsdbg",
-    "request": "launch",
-    "program": "${workspaceFolder}/build/releaseWithDebug/vvDecPlayer.exe",
-    "args": [],
-    "stopAtEntry": false,
-    "cwd": "${workspaceFolder}",
-    "environment": [],
-    "visualizerFile": "D:/Projekte/qt-natvis/qt5.natvis.xml"
-},
+    },
+    {
+      "name": "Release",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/release/vvDecPlayer.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "visualizerFile": "D:/Projekte/qt-natvis/qt5.natvis.xml"
+    },
+    {
+      "name": "Release+debug",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/releaseWithDebug/vvDecPlayer.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "visualizerFile": "D:/Projekte/qt-natvis/qt5.natvis.xml"
+    },
   ]
 }
