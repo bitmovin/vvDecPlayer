@@ -29,6 +29,8 @@ FileDownloader::FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer)
 
   connect(
       segmentBuffer, &SegmentBuffer::startNextDownload, this, &FileDownloader::downloadNextFile);
+  connect(
+      this, &FileDownloader::downloadFinished, segmentBuffer, &SegmentBuffer::onDownloadFinished);
 }
 
 QString FileDownloader::getStatus() { return this->statusText; }
@@ -44,9 +46,9 @@ void FileDownloader::replyFinished(QNetworkReply *reply)
     return;
   }
 
-  auto newSegment            = std::make_shared<Segment>();
-  newSegment->compressedData = reply->readAll();
-  this->segmentBuffer->pushDownloadedSegment(newSegment);
+  this->currentSegment->compressedData   = reply->readAll();
+  this->currentSegment->downloadProgress = 100.0;
+  this->currentSegment->downloadFinished = true;
   emit downloadFinished();
 
   this->statusText = "Waiting";
@@ -58,12 +60,14 @@ void FileDownloader::updateDownloadProgress(int64_t val, int64_t max)
   if (max > 0 && val > 0)
   {
     auto downloadPercent = val * 100 / max;
-    this->statusText     = QString("Downloading (%1)").arg(downloadPercent);
+    if (this->currentSegment)
+      this->currentSegment->downloadProgress = Segment::Percent(downloadPercent);
   }
 }
 
 void FileDownloader::openDirectory(QDir path, QString segmentPattern)
 {
+  DEBUG("Open URL " << path << " with pattern " << segmentPattern);
   unsigned segmentNr = 0;
   while (true)
   {
@@ -110,6 +114,8 @@ void FileDownloader::downloadNextFile()
 {
   QNetworkAccessManager networkManager;
 
+  this->currentSegment = segmentBuffer->getNextDownloadSegment();
+
   if (this->isLocalSource)
   {
     QFile inputFile(*this->fileListIt);
@@ -118,10 +124,11 @@ void FileDownloader::downloadNextFile()
                                LoggingPriority::Error);
     else
     {
-      // For loca files the download finished immediately
-      auto newSegment            = std::make_shared<Segment>();
-      newSegment->compressedData = inputFile.readAll();
-      this->segmentBuffer->pushDownloadedSegment(newSegment);
+      // For local files the download finishes immediately
+      DEBUG("Loading local file " << *this->fileListIt);
+      this->currentSegment->compressedData   = inputFile.readAll();
+      this->currentSegment->downloadProgress = 100.0;
+      this->currentSegment->downloadFinished = true;
       emit downloadFinished();
     }
   }
@@ -132,7 +139,7 @@ void FileDownloader::downloadNextFile()
     QNetworkRequest request(*this->fileListIt);
     QNetworkReply * reply = this->networkManager.get(request);
     connect(reply, &QNetworkReply::downloadProgress, this, &FileDownloader::updateDownloadProgress);
-    this->statusText = "Downloading";
+    this->statusText = "Download";
   }
 
   this->fileListIt++;

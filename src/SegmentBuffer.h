@@ -59,8 +59,8 @@ public:
   };
   std::vector<SegmentRenderInfo> getBufferStatusForRender(FramePt curPlaybackFrame);
 
-  // The downloader will push downloaded segments in here. This will not block.
-  void pushDownloadedSegment(SegmentPtr segment);
+  // The downloader will get new segments from here. This will not block.
+  SegmentPtr getNextDownloadSegment();
 
   // The decoder will get segments to decode here (and may get blocked if too many
   // decoded frames are already in the buffer)
@@ -78,6 +78,9 @@ public:
 
 signals:
   void startNextDownload();
+
+public slots:
+  void onDownloadFinished();
 
 private:
   void tryToStartNextDownload();

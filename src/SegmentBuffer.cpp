@@ -83,19 +83,23 @@ SegmentBuffer::getBufferStatusForRender(FramePt curPlaybackFrame)
   return states;
 }
 
-void SegmentBuffer::pushDownloadedSegment(SegmentPtr segment)
+SegmentBuffer::SegmentPtr SegmentBuffer::getNextDownloadSegment()
 {
-  DEBUG("SegmentBuffer: Got downloaded segment");
-  
+  DEBUG("SegmentBuffer: Get next segment");
+
   if (this->aborted)
   {
-    DEBUG("SegmentBuffer: Not Pushed downloaded segment because of abort");
-    return;
+    DEBUG("SegmentBuffer: Not returning next download segment because of abort");
+    return {};
   }
 
-  DEBUG("SegmentBuffer: Pushed downloaded segment");
-  this->segments.push_back(segment);
+  auto newSegment = std::make_shared<Segment>();
+  this->segments.push_back(newSegment);
+  return newSegment;
+}
 
+void SegmentBuffer::onDownloadFinished()
+{
   this->eventCV.notify_all();
   this->tryToStartNextDownload();
 }
@@ -106,7 +110,13 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToDecode()
   this->eventCV.notify_all();
 
   std::shared_lock lk(this->segmentQueueMutex);
-  this->eventCV.wait(lk, [this]() { return this->aborted || this->segments.size() > 0; });
+  this->eventCV.wait(lk, [this]() {
+    if (this->aborted)
+      return true;
+    if (this->segments.size() == 0)
+      return false;
+    return (*this->segments.begin())->downloadFinished;
+  });
 
   if (this->aborted)
   {
@@ -127,8 +137,9 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToDecode(SegmentPtr segme
   this->eventCV.wait(lk, [this, segmentPtr]() {
     if (this->aborted)
       return true;
-    auto nextSegment = getNextSegmentFromQueue(segmentPtr, this->segments);
-    return bool(nextSegment);
+    if (auto nextSegment = getNextSegmentFromQueue(segmentPtr, this->segments))
+      return nextSegment->downloadFinished;
+    return false;
   });
 
   if (this->aborted)

@@ -18,6 +18,7 @@ struct Segment
 
   using Percent = double;
   Percent downloadProgress{0.0};
+  bool    downloadFinished{false};
 
   unsigned neFrames{24};
 

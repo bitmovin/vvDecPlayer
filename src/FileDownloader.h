@@ -49,6 +49,8 @@ private:
   ILogger *      logger{};
   SegmentBuffer *segmentBuffer{};
 
+  SegmentBuffer::SegmentPtr currentSegment; 
+
   std::vector<QString>           fileList;
   std::vector<QString>::iterator fileListIt;
 
