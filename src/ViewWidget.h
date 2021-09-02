@@ -24,6 +24,7 @@ public:
 
   void addMessage(QString message, LoggingPriority priority) override;
   void clearMessages() override;
+  void setScaleVideo(bool scaleVideo);
   void setShowDebugInfo(bool showDebugInfo);
   void setShowProgressGraph(bool drawGraph);
 
@@ -64,6 +65,7 @@ private:
 
   unsigned frameSegmentOffset{};
 
+  bool scaleVideo{false};
   bool showDebugInfo{false};
   bool showProgressGraph{false};
 };

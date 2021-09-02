@@ -34,6 +34,7 @@ private slots:
 
   void openLocalFolder();
   void toggleFullscreen(bool checked);
+  void toggleScaleVideo(bool checked);
   void toggleShowDebug(bool checked);
   void toggleShowProgressGraph(bool checked);
   void onSelectVVDeCLibrary();
@@ -48,6 +49,7 @@ private:
 private:
   void                         createMenusAndActions();
   QAction                      actionFullScreen;
+  QAction                      actionScaleVideo;
   QAction                      actionShowThreadStatus;
   QAction                      actionShowProgressGraph;
   QScopedPointer<QActionGroup> actionGroup;

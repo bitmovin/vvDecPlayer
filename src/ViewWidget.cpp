@@ -51,6 +51,7 @@ void ViewWidget::addMessage(QString message, LoggingPriority priority)
 void ViewWidget::paintEvent(QPaintEvent *)
 {
   QPainter painter(this);
+  painter.setRenderHint(QPainter::RenderHint::SmoothPixmapTransform);
 
   if (this->curFrame.isNull())
     return;
@@ -60,9 +61,33 @@ void ViewWidget::paintEvent(QPaintEvent *)
   auto &rgbImage = this->curFrame.frame->rgbImage;
   if (!rgbImage.isNull())
   {
-    int x = (this->width() - rgbImage.width()) / 2;
-    int y = (this->height() - rgbImage.height()) / 2;
-    painter.drawImage(x, y, rgbImage);
+    if (this->scaleVideo)
+    {
+      QRect drawRect;
+      auto  aspectRatioImage  = double(rgbImage.width()) / double(rgbImage.height());
+      auto  aspectRatioWidget = double(this->width()) / double(this->height());
+      if (aspectRatioWidget > aspectRatioImage)
+      {
+        // Full height, black bars left and right
+        drawRect.setHeight(this->height());
+        drawRect.setWidth(aspectRatioImage * this->height());
+        drawRect.moveTopLeft(QPoint((this->width() - drawRect.width()) / 2, 0));
+      }
+      else
+      {
+        // Full width, black bars top and bottom
+        drawRect.setHeight(this->width() / aspectRatioImage);
+        drawRect.setWidth(this->width());
+        drawRect.moveTopLeft(QPoint(0, (this->height() - drawRect.height()) / 2));
+      }
+      painter.drawImage(drawRect, rgbImage);
+    }
+    else
+    {
+      int x = (this->width() - rgbImage.width()) / 2;
+      int y = (this->height() - rgbImage.height()) / 2;
+      painter.drawImage(x, y, rgbImage);
+    }
   }
 
   this->drawAndUpdateMessages(painter);
@@ -226,6 +251,12 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
 void ViewWidget::clearMessages()
 {
   this->messages.clear();
+  this->update();
+}
+
+void ViewWidget::setScaleVideo(bool scaleVideo)
+{
+  this->scaleVideo = scaleVideo;
   this->update();
 }
 

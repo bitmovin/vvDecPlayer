@@ -28,9 +28,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 {
   // qDebug() << QTime::currentTime().toString("hh:mm:ss.zzz")<<"Key: "<< event;
 
-  int  key         = event->key();
-  bool controlOnly = (event->modifiers() == Qt::ControlModifier);
-
+  int key = event->key();
   if (key == Qt::Key_Escape)
   {
     if (isFullScreen())
@@ -38,21 +36,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
       this->actionFullScreen.trigger();
       return;
     }
-  }
-  else if (key == Qt::Key_F && controlOnly)
-  {
-    this->actionFullScreen.trigger();
-    return;
-  }
-  else if (key == Qt::Key_D && controlOnly)
-  {
-    this->actionShowThreadStatus.trigger();
-    return;
-  }
-  else if (key == Qt::Key_P && controlOnly)
-  {
-    this->actionShowProgressGraph.trigger();
-    return;
   }
   else if (key == Qt::Key_Space)
   {
@@ -108,6 +91,8 @@ void MainWindow::toggleFullscreen(bool)
   }
 }
 
+void MainWindow::toggleScaleVideo(bool checked) { this->ui.viewWidget->setScaleVideo(checked); }
+
 void MainWindow::toggleShowDebug(bool checked) { this->ui.viewWidget->setShowDebugInfo(checked); }
 
 void MainWindow::toggleShowProgressGraph(bool checked)
@@ -151,6 +136,7 @@ void MainWindow::createMenusAndActions()
 
   auto configureCheckableAction = [this](QAction &     action,
                                          QActionGroup *actionGroup,
+                                         QWidget *     addToWidget,
                                          QString       text,
                                          bool          checked,
                                          void (MainWindow::*func)(bool),
@@ -165,6 +151,9 @@ void MainWindow::createMenusAndActions()
       actionGroup->addAction(&action);
     if (!isEnabled)
       action.setEnabled(false);
+    this->addAction(&action);
+    if (addToWidget)
+      addToWidget->addAction(&action);
     connect(&action, &QAction::triggered, this, func);
   };
 
@@ -173,25 +162,32 @@ void MainWindow::createMenusAndActions()
   auto viewMenu = this->ui.menuBar->addMenu("View");
   configureCheckableAction(this->actionFullScreen,
                            nullptr,
+                           viewMenu,
                            "&Fullscreen Mode",
                            false,
                            &MainWindow::toggleFullscreen,
                            Qt::CTRL | Qt::Key_F);
-  viewMenu->addAction(&this->actionFullScreen);
+  configureCheckableAction(this->actionScaleVideo,
+                           nullptr,
+                           viewMenu,
+                           "&Scale Video",
+                           false,
+                           &MainWindow::toggleScaleVideo,
+                           Qt::CTRL | Qt::Key_S);
   configureCheckableAction(this->actionShowThreadStatus,
                            nullptr,
+                           viewMenu,
                            "Show &Debug",
                            false,
                            &MainWindow::toggleShowDebug,
                            Qt::CTRL | Qt::Key_D);
-  viewMenu->addAction(&this->actionShowThreadStatus);
   configureCheckableAction(this->actionShowProgressGraph,
                            nullptr,
+                           viewMenu,
                            "Show &Progress Graph",
                            false,
                            &MainWindow::toggleShowProgressGraph,
                            Qt::CTRL | Qt::Key_P);
-  viewMenu->addAction(&this->actionShowProgressGraph);
 
   auto settingsMenu = this->ui.menuBar->addMenu("Settings");
   settingsMenu->addAction("Select VVdeC library ...", this, &MainWindow::onSelectVVDeCLibrary);
