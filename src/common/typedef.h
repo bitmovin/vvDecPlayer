@@ -5,6 +5,7 @@
 
 #include <QImage>
 #include <QPixmap>
+#include <sstream>
 
 #ifdef Q_OS_MAC
 const bool is_Q_OS_MAC = true;
@@ -115,3 +116,39 @@ struct SegmentData
   size_t bitrate{};
   double progressPercent{};
 };
+
+typedef std::vector<unsigned char> ByteVector;
+
+template <typename T> struct Range
+{
+  T min{};
+  T max{};
+};
+
+struct Ratio
+{
+  int num{};
+  int den{};
+};
+
+/// ---- Custom types
+typedef std::pair<int, int>           IntPair;
+typedef std::pair<uint64_t, uint64_t> pairUint64;
+
+template <typename T> using umap_1d = std::map<unsigned, T>;
+template <typename T> using umap_2d = std::map<unsigned, umap_1d<T>>;
+template <typename T> using umap_3d = std::map<unsigned, umap_2d<T>>;
+
+template <typename T> using vector   = std::vector<T>;
+template <typename T> using vector2d = std::vector<vector<T>>;
+template <typename T> using vector3d = std::vector<vector2d<T>>;
+template <typename T> using vector4d = std::vector<vector3d<T>>;
+
+template <typename T> std::string to_string(const std::pair<T, T> typePair)
+{
+  std::ostringstream ss;
+  ss << "(" << typePair.first << ", " << typePair.second << ")";
+  return ss.str();
+}
+
+#define DEFAULT_FRAMERATE 24;
