@@ -70,7 +70,7 @@ SegmentBuffer::getBufferStatusForRender(FramePt curPlaybackFrame)
     SegmentRenderInfo segmentState;
     segmentState.downloadProgress = segment->downloadProgress;
     segmentState.sizeInBytes      = segment->compressedSizeBytes;
-    segmentState.nrFrames         = segment->neFrames;
+    segmentState.nrFrames         = segment->nrFrames;
     unsigned frameCounter         = 0;
     for (auto &frame : segment->frames)
     {
@@ -105,6 +105,54 @@ void SegmentBuffer::onDownloadFinished()
   this->tryToStartNextDownload();
 }
 
+SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToParse()
+{
+  DEBUG("SegmentBuffer: Waiting for first segment to parse.");
+  this->eventCV.notify_all();
+
+  std::shared_lock lk(this->segmentQueueMutex);
+  this->eventCV.wait(lk, [this]() {
+    if (this->aborted)
+      return true;
+    if (this->segments.size() == 0)
+      return false;
+    return (*this->segments.begin())->downloadFinished;
+  });
+
+  if (this->aborted)
+  {
+    DEBUG("SegmentBuffer: First segment to parse not ready because of abort");
+    return {};
+  }
+
+  DEBUG("SegmentBuffer: First segment to parse ready");
+  return *this->segments.begin();
+}
+
+SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToParse(SegmentPtr segmentPtr)
+{
+  DEBUG("SegmentBuffer: Waiting for next segment to parse");
+  this->eventCV.notify_all();
+
+  std::shared_lock lk(this->segmentQueueMutex);
+  this->eventCV.wait(lk, [this, segmentPtr]() {
+    if (this->aborted)
+      return true;
+    if (auto nextSegment = getNextSegmentFromQueue(segmentPtr, this->segments))
+      return nextSegment->downloadFinished;
+    return false;
+  });
+
+  if (this->aborted)
+  {
+    DEBUG("SegmentBuffer: Next segment to parse not ready because of abort");
+    return {};
+  }
+
+  DEBUG("SegmentBuffer: Next segment to parse ready");
+  return getNextSegmentFromQueue(segmentPtr, this->segments);
+}
+
 SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToDecode()
 {
   DEBUG("SegmentBuffer: Waiting for first segment to decode.");
@@ -116,7 +164,7 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToDecode()
       return true;
     if (this->segments.size() == 0)
       return false;
-    return (*this->segments.begin())->downloadFinished;
+    return (*this->segments.begin())->parsingFinished;
   });
 
   if (this->aborted)
@@ -139,7 +187,7 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToDecode(SegmentPtr segme
     if (this->aborted)
       return true;
     if (auto nextSegment = getNextSegmentFromQueue(segmentPtr, this->segments))
-      return nextSegment->downloadFinished;
+      return nextSegment->parsingFinished;
     return false;
   });
 

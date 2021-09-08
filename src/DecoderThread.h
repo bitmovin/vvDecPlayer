@@ -10,14 +10,14 @@
 #include <optional>
 #include <thread>
 
-class DecoderManager
+class DecoderThread
 {
 public:
-  DecoderManager(ILogger *logger, SegmentBuffer *segmentBuffer);
-  ~DecoderManager();
+  DecoderThread(ILogger *logger, SegmentBuffer *segmentBuffer);
+  ~DecoderThread();
   void abort();
 
-  QString getStatus() ;
+  QString getStatus();
 
 private:
   ILogger *      logger{};
@@ -27,10 +27,8 @@ private:
 
   std::unique_ptr<decoder::decoderBase> decoder;
 
-  std::thread             decoderThread;
-  bool                    decoderAbort{false};
-
-  size_t currentFrameIdxInSegment{};
+  std::thread decoderThread;
+  bool        decoderAbort{false};
 
   QString statusText;
 };

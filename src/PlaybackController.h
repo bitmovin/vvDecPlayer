@@ -3,8 +3,9 @@
 
 #pragma once
 
-#include "DecoderManager.h"
+#include "DecoderThread.h"
 #include "FileDownloader.h"
+#include "FileParserThread.h"
 #include "FrameConversionThread.h"
 #include "ILogger.h"
 #include <SegmentBuffer.h>
@@ -32,7 +33,8 @@ private:
   ILogger *logger{};
 
   std::unique_ptr<FileDownloader>        downloader;
-  std::unique_ptr<DecoderManager>        decoder;
+  std::unique_ptr<DecoderThread>         decoder;
+  std::unique_ptr<FileParserThread>      parser;
   std::unique_ptr<FrameConversionThread> conversion;
 
   SegmentBuffer segmentBuffer;

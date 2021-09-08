@@ -63,6 +63,10 @@ public:
   // The downloader will get new segments from here. This will not block.
   SegmentPtr getNextDownloadSegment();
 
+  // The parser will get segments to parser here (and may get blocked if no segment is ready yet)
+  SegmentPtr getFirstSegmentToParse();
+  SegmentPtr getNextSegmentToParse(SegmentPtr segment);
+
   // The decoder will get segments to decode here (and may get blocked if too many
   // decoded frames are already in the buffer)
   SegmentPtr getFirstSegmentToDecode();
