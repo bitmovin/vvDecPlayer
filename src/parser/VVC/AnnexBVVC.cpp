@@ -230,9 +230,20 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
                                                   std::optional<pairUint64>   nalStartEndPosFile)
 {
   AnnexB::ParseResult parseResult;
+  parseResult.success = true;
 
   if (nalID == -1 && data.empty())
+  {
+    if (this->parsingState.lastFramePOC != -1)
+    {
+      if (!this->handleNewAU(this->parsingState, parseResult, bitrateEntry, nalStartEndPosFile))
+      {
+        DEBUG_VVC("Error handling last AU");
+        parseResult.success = false;
+      }
+    }
     return parseResult;
+  }
 
   // Skip the NAL unit header
   int readOffset = 0;
@@ -251,8 +262,6 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
   //   nalRoot = parent->createChildItem();
   // else if (packetModel->rootItem)
   //   nalRoot = packetModel->rootItem->createChildItem();
-
-  parseResult.success = true;
 
   if (nalRoot)
     AnnexB::logNALSize(data, nalRoot, nalStartEndPosFile);
@@ -447,49 +456,15 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     this->nalUnitsForSeeking.push_back(nalVVC);
   }
 
-  if (auDelimiterDetector.isStartOfNewAU(nalVVC, updatedParsingState.currentPictureHeaderStructure))
+  if (this->auDelimiterDetector.isStartOfNewAU(nalVVC,
+                                               updatedParsingState.currentPictureHeaderStructure))
   {
-    DEBUG_VVC("Start of new AU. Adding bitrate " << this->parsingState.sizeCurrentAU << " POC "
-                                                 << this->parsingState.lastFramePOC << " AU "
-                                                 << this->parsingState.counterAU);
-
-    BitrateEntry entry;
-    if (bitrateEntry)
-    {
-      entry.pts      = bitrateEntry->pts;
-      entry.dts      = bitrateEntry->dts;
-      entry.duration = bitrateEntry->duration;
-    }
-    else
-    {
-      entry.pts      = this->parsingState.lastFramePOC;
-      entry.dts      = int(this->parsingState.counterAU);
-      entry.duration = 1;
-    }
-    entry.bitrate            = unsigned(this->parsingState.sizeCurrentAU);
-    entry.keyframe           = this->parsingState.lastFrameIsKeyframe;
-    parseResult.bitrateEntry = entry;
-
-    if (!addFrameToList(this->parsingState.lastFramePOC,
-                        this->parsingState.curFrameFileStartEndPos,
-                        this->parsingState.lastFrameIsKeyframe))
+    if (!this->handleNewAU(updatedParsingState, parseResult, bitrateEntry, nalStartEndPosFile))
     {
       specificDescription +=
           " ERROR Adding POC " + std::to_string(this->parsingState.lastFramePOC) + " to frame list";
       parseResult.success = false;
     }
-    if (this->parsingState.curFrameFileStartEndPos)
-      DEBUG_VVC("Adding start/end " << this->parsingState.curFrameFileStartEndPos->first << "/"
-                                    << this->parsingState.curFrameFileStartEndPos->second
-                                    << " - AU " << this->parsingState.counterAU
-                                    << (this->parsingState.lastFrameIsKeyframe ? " - ra" : ""));
-    else
-      DEBUG_VVC("Adding start/end %d/%d - POC NA/NA"
-                << (this->parsingState.lastFrameIsKeyframe ? " - ra" : ""));
-
-    updatedParsingState.curFrameFileStartEndPos = nalStartEndPosFile;
-    updatedParsingState.sizeCurrentAU           = 0;
-    updatedParsingState.counterAU++;
   }
   else if (this->parsingState.curFrameFileStartEndPos && nalStartEndPosFile)
     updatedParsingState.curFrameFileStartEndPos->second = nalStartEndPosFile->second;
@@ -550,6 +525,54 @@ bool AnnexBVVC::auDelimiterDetector_t::isStartOfNewAU(
 
   this->lastNalWasVcl = isVcl;
   return false;
+}
+
+bool AnnexBVVC::handleNewAU(ParsingState &              updatedParsingState,
+                            AnnexB::ParseResult &       parseResult,
+                            std::optional<BitrateEntry> bitrateEntry,
+                            std::optional<pairUint64>   nalStartEndPosFile)
+{
+  DEBUG_VVC("Start of new AU. Adding bitrate " << this->parsingState.sizeCurrentAU << " POC "
+                                               << this->parsingState.lastFramePOC << " AU "
+                                               << this->parsingState.counterAU);
+
+  BitrateEntry entry;
+  if (bitrateEntry)
+  {
+    entry.pts      = bitrateEntry->pts;
+    entry.dts      = bitrateEntry->dts;
+    entry.duration = bitrateEntry->duration;
+  }
+  else
+  {
+    entry.pts      = this->parsingState.lastFramePOC;
+    entry.dts      = int(this->parsingState.counterAU);
+    entry.duration = 1;
+  }
+  entry.bitrate            = unsigned(this->parsingState.sizeCurrentAU);
+  entry.keyframe           = this->parsingState.lastFrameIsKeyframe;
+  parseResult.bitrateEntry = entry;
+
+  if (!addFrameToList(this->parsingState.lastFramePOC,
+                      this->parsingState.curFrameFileStartEndPos,
+                      this->parsingState.lastFrameIsKeyframe))
+  {
+    return false;
+  }
+  if (this->parsingState.curFrameFileStartEndPos)
+    DEBUG_VVC("Adding start/end " << this->parsingState.curFrameFileStartEndPos->first << "/"
+                                  << this->parsingState.curFrameFileStartEndPos->second << " - AU "
+                                  << this->parsingState.counterAU
+                                  << (this->parsingState.lastFrameIsKeyframe ? " - ra" : ""));
+  else
+    DEBUG_VVC("Adding start/end %d/%d - POC NA/NA"
+              << (this->parsingState.lastFrameIsKeyframe ? " - ra" : ""));
+
+  updatedParsingState.curFrameFileStartEndPos = nalStartEndPosFile;
+  updatedParsingState.sizeCurrentAU           = 0;
+  updatedParsingState.counterAU++;
+
+  return true;
 }
 
 } // namespace parser

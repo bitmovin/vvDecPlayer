@@ -91,7 +91,7 @@ void FileDownloader::openDirectory(QDir path, QString segmentPattern)
                            LoggingPriority::Info);
 
   this->isLocalSource = true;
-  this->fileListIt    = this->fileList.begin();
+  this->segmentNumber = 0;
   this->downloadNextFile();
 }
 
@@ -111,7 +111,7 @@ void FileDownloader::openURL(QString baseUrl, QString segmentPattern, unsigned s
                            LoggingPriority::Info);
 
   this->isLocalSource = false;
-  this->fileListIt    = this->fileList.begin();
+  this->segmentNumber = 0;
   this->downloadNextFile();
 }
 
@@ -119,13 +119,15 @@ void FileDownloader::downloadNextFile()
 {
   QNetworkAccessManager networkManager;
 
-  this->currentSegment = segmentBuffer->getNextDownloadSegment();
+  this->currentSegment                = segmentBuffer->getNextDownloadSegment();
+  this->currentSegment->segmentNumber = this->segmentNumber;
 
+  auto fileName = this->fileList.at(this->segmentNumber);
   if (this->isLocalSource)
   {
-    QFile inputFile(*this->fileListIt);
+    QFile inputFile(fileName);
     if (!inputFile.open(QIODevice::ReadOnly))
-      this->logger->addMessage(QString("Error reading file %1").arg(*this->fileListIt),
+      this->logger->addMessage(QString("Error reading file %1").arg(fileName),
                                LoggingPriority::Error);
     else
     {
@@ -142,11 +144,13 @@ void FileDownloader::downloadNextFile()
   {
     DEBUG("Start download of file " << *this->fileListIt);
 
-    QNetworkRequest request(*this->fileListIt);
+    QNetworkRequest request(fileName);
     QNetworkReply * reply = this->networkManager.get(request);
     connect(reply, &QNetworkReply::downloadProgress, this, &FileDownloader::updateDownloadProgress);
     this->statusText = "Download";
   }
 
-  this->fileListIt++;
+  this->segmentNumber++;
+  if (this->segmentNumber >= this->fileList.size())
+    this->segmentNumber = 0;
 }

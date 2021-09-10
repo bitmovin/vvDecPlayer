@@ -3,8 +3,8 @@
 
 #include "DecoderThread.h"
 
-#include <decoder/decoderVVDec.h>
 #include <common/functions.h>
+#include <decoder/decoderVVDec.h>
 
 #include <QDebug>
 #include <chrono>
@@ -94,16 +94,21 @@ void DecoderThread::runDecoder()
         DEBUG("Checking for next frame ");
         if (this->decoder->decodeNextFrame())
         {
-          auto newFrame         = std::make_shared<Frame>();
-          newFrame->rawYUVData  = this->decoder->getRawFrameData();
-          newFrame->pixelFormat = this->decoder->getYUVPixelFormat();
-          newFrame->frameSize   = this->decoder->getFrameSize();
-          newFrame->frameState  = FrameState::Decoded;
-          segmentIt->frames.push_back(newFrame);
+          if (currentFrameIdxInSegment >= segmentIt->frames.size())
+          {
+            this->logger->addMessage(QString("Error putting frame %1 into buffer. Frame not found.")
+                                         .arg(currentFrameIdxInSegment),
+                                     LoggingPriority::Error);
+          }
+
+          auto frame         = segmentIt->frames.at(currentFrameIdxInSegment);
+          frame->rawYUVData  = this->decoder->getRawFrameData();
+          frame->pixelFormat = this->decoder->getYUVPixelFormat();
+          frame->frameSize   = this->decoder->getFrameSize();
+          frame->frameState  = FrameState::Decoded;
 
           DEBUG("Retrived frame " << currentFrameIdxInSegment << " with size "
-                                  << newFrame->frameSize.width << "x"
-                                  << newFrame->frameSize.height);
+                                  << frame->frameSize.width << "x" << frame->frameSize.height);
           currentFrameIdxInSegment++;
         }
       }

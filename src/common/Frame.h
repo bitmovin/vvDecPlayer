@@ -8,7 +8,6 @@
 #include <QImage>
 #include <YUV/YUVPixelFormat.h>
 
-
 enum class FrameState
 {
   ConvertedToRGB, // Ready for display (rgbImage filled)
@@ -23,6 +22,9 @@ struct Frame
   QByteArray                    rawYUVData;
   Size                          frameSize;
   YUV_Internals::YUVPixelFormat pixelFormat;
+
+  size_t   nrBytesCompressed{};
+  unsigned poc{};
 
   QImage rgbImage;
 };

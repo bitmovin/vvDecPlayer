@@ -49,10 +49,10 @@ private:
   ILogger *      logger{};
   SegmentBuffer *segmentBuffer{};
 
-  SegmentBuffer::SegmentPtr currentSegment; 
+  SegmentBuffer::SegmentPtr currentSegment;
 
-  std::vector<QString>           fileList;
-  std::vector<QString>::iterator fileListIt;
+  std::vector<QString> fileList;
+  unsigned             segmentNumber{};
 
   bool isLocalSource{false};
 

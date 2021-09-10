@@ -15,6 +15,7 @@ PlaybackController::PlaybackController(ILogger *logger) : logger(logger)
 PlaybackController::~PlaybackController()
 {
   this->decoder->abort();
+  this->parser->abort();
   this->conversion->abort();
   this->segmentBuffer.abort();
 }
@@ -44,6 +45,7 @@ QString PlaybackController::getStatus()
 {
   QString status;
   status += "Downloader: " + this->downloader->getStatus() + "\n";
+  status += "Parser: " + this->parser->getStatus() + "\n";
   status += "Decoder: " + this->decoder->getStatus() + "\n";
   status += "Conversion: " + this->conversion->getStatus() + "\n";
   return status;

@@ -99,6 +99,11 @@ protected:
   };
   ParsingState parsingState;
 
+  bool handleNewAU(ParsingState &              updatedParsingState,
+                   AnnexB::ParseResult &       parseResult,
+                   std::optional<BitrateEntry> bitrateEntry,
+                   std::optional<pairUint64>   nalStartEndPosFile);
+
   struct auDelimiterDetector_t
   {
     bool     isStartOfNewAU(std::shared_ptr<vvc::NalUnitVVC>               nal,

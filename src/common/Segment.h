@@ -11,6 +11,7 @@
 struct Segment
 {
   QString pathOrURL;
+  unsigned segmentNumber{};
 
   QByteArray  compressedData;
   std::size_t compressedSizeBytes{};

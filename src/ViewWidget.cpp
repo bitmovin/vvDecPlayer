@@ -100,6 +100,8 @@ void ViewWidget::drawAndUpdateMessages(QPainter &painter)
   unsigned           yOffset = 0;
   constexpr unsigned MARGIN  = 2;
 
+  std::scoped_lock lock(this->messagesMutex);
+
   auto it = this->messages.begin();
   while (it != this->messages.end())
   {
@@ -168,8 +170,9 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
   // painter.setBrush(Qt::white);
   // painter.drawRect(graphRect);
 
-  const auto colorMap = std::map<FrameState, QColor>(
-      {{FrameState::Decoded, Qt::blue}, {FrameState::ConvertedToRGB, Qt::green}});
+  const auto colorMap = std::map<FrameState, QColor>({{FrameState::Empty, Qt::lightGray},
+                                                      {FrameState::Decoded, Qt::blue},
+                                                      {FrameState::ConvertedToRGB, Qt::green}});
 
   auto bufferState =
       this->playbackController->getSegmentBuffer()->getBufferStatusForRender(this->curFrame.frame);
@@ -205,51 +208,58 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
       painter.setBrush(Qt::white);
       painter.drawRect(segmentRect);
 
-      auto frameLeft = segmentRect.left() + segmentBoxBoarder.width();
-      for (auto &frameState : segment.frameStates)
+      // Draw the box for the segment
       {
-        frameRect.moveLeft(frameLeft);
-        painter.setBrush(colorMap.at(frameState));
-        painter.drawRect(frameRect);
-        frameLeft += frameRect.width() + spaceBetweenFrames;
+        auto absHeight = segment.sizeInBytes / 1000;
+
+        QRectF bitrateBarRect;
+        bitrateBarRect.setWidth(segment.nrFrames * frameRect.width() +
+                                (segment.nrFrames - 1) * spaceBetweenFrames +
+                                segmentBoxBoarder.width() * 2);
+        bitrateBarRect.moveLeft(segmentLeft);
+        bitrateBarRect.setHeight(absHeight * segment.downloadProgress / 100);
+        bitrateBarRect.moveBottom(frameRect.top() - 5);
+        painter.setBrush(Qt::darkCyan);
+        painter.setPen(Qt::NoPen);
+        painter.drawRect(bitrateBarRect);
+
+        bitrateBarRect.setHeight(absHeight);
+        bitrateBarRect.moveBottom(frameRect.top() - 5);
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(Qt::cyan);
+        painter.drawRect(bitrateBarRect);
+
+        painter.setPen(Qt::black);
+        painter.drawText(bitrateBarRect,
+                         QString("Seg: %1").arg(segment.segmentNumber),
+                         Qt::AlignHCenter | Qt::AlignBottom);
+
+        segmentLeft += bitrateBarRect.width() + spaceBetweenSegments;
       }
 
-      segmentLeft += segmentRect.width() + spaceBetweenSegments;
-    }
-  }
+      // Draw the per frame boxes and bitrate
+      auto frameLeft = segmentRect.left() + segmentBoxBoarder.width();
+      for (auto &frameInfo : segment.frameInfo)
+      {
+        frameRect.moveLeft(frameLeft);
+        painter.setBrush(colorMap.at(frameInfo.frameState));
+        painter.drawRect(frameRect);
 
-  {
-    // Next the bitrate graph
-    auto segmentLeft = firstSegmentLeft;
+        auto frameBitrateRect = frameRect;
+        auto absHeight        = frameInfo.sizeInBytes / 1000;
+        frameBitrateRect.setHeight(absHeight * segment.downloadProgress / 100);
+        frameBitrateRect.moveBottom(frameRect.top() - 5);
+        painter.drawRect(frameBitrateRect);
 
-    for (auto &segment : bufferState)
-    {
-      auto absHeight = segment.sizeInBytes / 1000;
-
-      QRectF bitrateBarRect;
-      bitrateBarRect.setWidth(segment.nrFrames * frameRect.width() +
-                              (segment.nrFrames - 1) * spaceBetweenFrames +
-                              segmentBoxBoarder.width() * 2);
-      bitrateBarRect.moveLeft(segmentLeft);
-      bitrateBarRect.setHeight(absHeight * segment.downloadProgress / 100);
-      bitrateBarRect.moveBottom(frameRect.top() - 5);
-      painter.setBrush(Qt::darkCyan);
-      painter.setPen(Qt::NoPen);
-      painter.drawRect(bitrateBarRect);
-
-      bitrateBarRect.setHeight(absHeight);
-      bitrateBarRect.moveBottom(frameRect.top() - 5);
-      painter.setBrush(Qt::NoBrush);
-      painter.setPen(Qt::cyan);
-      painter.drawRect(bitrateBarRect);
-
-      segmentLeft += bitrateBarRect.width() + spaceBetweenSegments;
+        frameLeft += frameRect.width() + spaceBetweenFrames;
+      }
     }
   }
 }
 
 void ViewWidget::clearMessages()
 {
+  std::scoped_lock lock(this->messagesMutex);
   this->messages.clear();
   this->update();
 }
