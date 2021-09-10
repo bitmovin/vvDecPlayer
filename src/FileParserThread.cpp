@@ -32,7 +32,7 @@ FileParserThread::~FileParserThread()
 
 void FileParserThread::abort() { this->parserAbort = true; }
 
-QString FileParserThread::getStatus()
+QString FileParserThread::getStatus() const
 {
   return (this->parserAbort ? "Abort " : "") + this->statusText;
 }

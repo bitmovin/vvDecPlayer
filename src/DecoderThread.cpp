@@ -40,7 +40,7 @@ DecoderThread::~DecoderThread()
 
 void DecoderThread::abort() { this->decoderAbort = true; }
 
-QString DecoderThread::getStatus()
+QString DecoderThread::getStatus() const
 {
   return (this->decoderAbort ? "Abort " : "") + this->statusText;
 }

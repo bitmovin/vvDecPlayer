@@ -17,7 +17,7 @@ public:
   ~FileParserThread();
   void abort();
 
-  QString getStatus();
+  QString getStatus() const;
 
 private:
   ILogger *      logger{};

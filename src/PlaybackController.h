@@ -24,6 +24,8 @@ public:
   void openDirectory(QDir path, QString segmentPattern);
   void openURL(QString url, QString segmentPattern, unsigned segmentNrMax);
 
+  void gotoSegment(unsigned segmentNumber);
+
   QString getStatus();
   auto    getLastSegmentsData() -> std::deque<SegmentData>;
 

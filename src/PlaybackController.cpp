@@ -41,6 +41,13 @@ void PlaybackController::openURL(QString url, QString segmentPattern, unsigned s
   this->downloader->openURL(url, segmentPattern, segmentNrMax);
 }
 
+void PlaybackController::gotoSegment(unsigned segmentNumber)
+{
+  if (!this->downloader)
+    return;
+  this->downloader->gotoSegment(segmentNumber);
+}
+
 QString PlaybackController::getStatus()
 {
   QString status;

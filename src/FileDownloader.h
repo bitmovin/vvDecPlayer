@@ -34,7 +34,9 @@ public:
   void openDirectory(QDir path, QString segmentPattern);
   void openURL(QString baseUrl, QString segmentPattern, unsigned segmentNrMax);
 
-  QString getStatus();
+  void gotoSegment(unsigned segmentNumber) { this->segmentNumber = segmentNumber; }
+
+  QString getStatus() const;
 
 signals:
   void downloadFinished();

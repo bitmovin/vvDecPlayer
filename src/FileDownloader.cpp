@@ -33,7 +33,7 @@ FileDownloader::FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer)
       this, &FileDownloader::downloadFinished, segmentBuffer, &SegmentBuffer::onDownloadFinished);
 }
 
-QString FileDownloader::getStatus() { return this->statusText; }
+QString FileDownloader::getStatus() const { return this->statusText; }
 
 void FileDownloader::replyFinished(QNetworkReply *reply)
 {

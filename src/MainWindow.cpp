@@ -189,6 +189,10 @@ void MainWindow::createMenusAndActions()
                            &MainWindow::toggleShowProgressGraph,
                            Qt::CTRL | Qt::Key_P);
 
+  auto playbackMenu = this->ui.menuBar->addMenu("Playback");
+  playbackMenu->addAction(
+      "Goto segment number ...", this, &MainWindow::onGotoSegmentNumber, Qt::CTRL | Qt::Key_G);
+
   auto settingsMenu = this->ui.menuBar->addMenu("Settings");
   settingsMenu->addAction("Select VVdeC library ...", this, &MainWindow::onSelectVVDeCLibrary);
 }
@@ -288,4 +292,15 @@ void MainWindow::openFixedUrl()
     this->playbackController->openURL(pathToOpen, DEFAULT_SEGMENT_PATTERN, SINTEL_SEGMENT_NR);
     this->ui.viewWidget->setPlaybackFps(24.0);
   }
+}
+
+void MainWindow::onGotoSegmentNumber()
+{
+  bool ok            = false;
+  auto max           = 2147483647;
+  auto segmentNumber = QInputDialog::getInt(
+      this, "Goto segment number", "Please provide a segment number", 0, 0, max, 1, &ok);
+  if (!ok)
+    return;
+  this->playbackController->gotoSegment(segmentNumber);
 }

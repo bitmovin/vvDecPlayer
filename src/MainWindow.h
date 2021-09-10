@@ -40,6 +40,7 @@ private slots:
   void onSelectVVDeCLibrary();
   void openFixedFile();
   void openFixedUrl();
+  void onGotoSegmentNumber();
 
 private:
   Ui::MainWindow ui;
