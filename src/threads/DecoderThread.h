@@ -3,10 +3,11 @@
 
 #pragma once
 
-#include "ILogger.h"
 #include <SegmentBuffer.h>
-#include <condition_variable>
+#include <common/ILogger.h>
 #include <decoder/decoderBase.h>
+
+#include <condition_variable>
 #include <optional>
 #include <thread>
 

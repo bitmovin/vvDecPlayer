@@ -103,26 +103,15 @@ void MainWindow::toggleShowProgressGraph(bool checked)
 void MainWindow::createMenusAndActions()
 {
   QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
-  fileMenu->addAction("Open local folder ...", this, &MainWindow::openLocalFolder);
+  fileMenu->addAction("Open JSON manifest ...", this, &MainWindow::openJsonManifestFile);
   fileMenu->addSeparator();
 
-  auto presetFiles = fileMenu->addMenu("Predefined Files");
-  for (int i = 0; i < 1; i++)
-  {
-    this->fixedFileActions[i] = new QAction(this);
-    this->fixedFileActions[i]->setText("Local test Sintel");
-    this->fixedFileActions[i]->setData("D:/Bitmovin/Issues/EN-9928-VVEnc/Sintel720p");
-    connect(
-        this->fixedFileActions[i].data(), &QAction::triggered, this, &MainWindow::openFixedFile);
-    presetFiles->addAction(this->fixedFileActions[i]);
-  }
-  auto presetURLs = fileMenu->addMenu("Predefined URLs");
+  auto presetURLs = fileMenu->addMenu("Bitmovin Streams");
   for (int i = 0; i < 1; i++)
   {
     this->fixedURLActions[i] = new QAction(this);
-    this->fixedURLActions[i]->setText("Remote Sintel AWS S3");
-    this->fixedURLActions[i]->setData(
-        "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/Sintel720p/");
+    this->fixedURLActions[i]->setText("Sintel AWS S3 720p");
+    this->fixedURLActions[i]->setData(0);
     connect(this->fixedURLActions[i].data(), &QAction::triggered, this, &MainWindow::openFixedUrl);
     presetURLs->addAction(this->fixedURLActions[i]);
   }
@@ -197,41 +186,22 @@ void MainWindow::createMenusAndActions()
   settingsMenu->addAction("Select VVdeC library ...", this, &MainWindow::onSelectVVDeCLibrary);
 }
 
-void MainWindow::openLocalFolder()
+void MainWindow::openJsonManifestFile()
 {
-  QFileDialog fileDialog(this, "Select directory with VVC segments");
-  fileDialog.setDirectory(QDir::current());
-  fileDialog.setFileMode(QFileDialog::Directory);
+  QFileDialog fileDialog(this, "Select directory with VVC segments", "", "Manifest (*.json)");
 
   if (fileDialog.exec())
   {
     auto files = fileDialog.selectedFiles();
     if (files.size() == 0)
       return;
-    auto path = files[0];
+    auto file = files[0];
 
-    bool ok             = false;
-    auto segmentPattern = QInputDialog::getText(this,
-                                                "Segment name pattern",
-                                                "Please provide a pattern for the files to read "
-                                                "from the directory (e.g. \"segment_%i.vvc\")",
-                                                QLineEdit::Normal,
-                                                DEFAULT_SEGMENT_PATTERN,
-                                                &ok);
-    if (!ok)
-      return;
-
-    if (!segmentPattern.contains("%i"))
+    if (this->playbackController->openJsonManifestFile(files[0]))
     {
-      QMessageBox::critical(
-          this,
-          "Error in segment name",
-          "The selected segment name pattern is invalid. It must contain a \"%i\"");
-      return;
+      const auto initialGuessedFPS = 24.0;
+      this->ui.viewWidget->setPlaybackFps(initialGuessedFPS);
     }
-
-    this->playbackController->openDirectory(path, segmentPattern);
-    this->ui.viewWidget->setPlaybackFps(24.0);
   }
 }
 
@@ -272,25 +242,15 @@ void MainWindow::onSelectVVDeCLibrary()
   }
 }
 
-void MainWindow::openFixedFile()
-{
-  auto action = qobject_cast<QAction *>(sender());
-  if (action)
-  {
-    auto pathToOpen = action->data().toString();
-    this->playbackController->openDirectory(pathToOpen, DEFAULT_SEGMENT_PATTERN);
-    this->ui.viewWidget->setPlaybackFps(24.0);
-  }
-}
-
 void MainWindow::openFixedUrl()
 {
   auto action = qobject_cast<QAction *>(sender());
   if (action)
   {
-    auto pathToOpen = action->data().toString();
-    this->playbackController->openURL(pathToOpen, DEFAULT_SEGMENT_PATTERN, SINTEL_SEGMENT_NR);
-    this->ui.viewWidget->setPlaybackFps(24.0);
+    auto id = action->data().toInt();
+    this->playbackController->openPredefinedManifest(id);
+    const auto initialGuessedFPS = 24.0;
+    this->ui.viewWidget->setPlaybackFps(initialGuessedFPS);
   }
 }
 

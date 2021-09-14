@@ -27,25 +27,33 @@ void PlaybackController::reset()
   this->conversion = std::make_unique<FrameConversionThread>(this->logger, &this->segmentBuffer);
   this->decoder    = std::make_unique<DecoderThread>(this->logger, &this->segmentBuffer);
 
+  this->manifestFile = std::make_unique<ManifestFile>(this->logger);
+
   this->logger->clearMessages();
   this->logger->addMessage("Playback Controller initialized", LoggingPriority::Info);
 }
 
-void PlaybackController::openDirectory(QDir path, QString segmentPattern)
+bool PlaybackController::openJsonManifestFile(QString jsonManifestFile)
 {
-  this->downloader->openDirectory(path, segmentPattern);
+  auto success = this->manifestFile->openJsonManifestFile(jsonManifestFile);
+  if (success)
+    this->downloader->activateManifest(this->manifestFile.get());
+  return success;
 }
 
-void PlaybackController::openURL(QString url, QString segmentPattern, unsigned segmentNrMax)
+bool PlaybackController::openPredefinedManifest(unsigned predefinedManifestID)
 {
-  this->downloader->openURL(url, segmentPattern, segmentNrMax);
+  auto success = this->manifestFile->openPredefinedManifest(predefinedManifestID);
+  if (success)
+    this->downloader->activateManifest(this->manifestFile.get());
+  return success;
 }
 
 void PlaybackController::gotoSegment(unsigned segmentNumber)
 {
-  if (!this->downloader)
+  if (!this->manifestFile)
     return;
-  this->downloader->gotoSegment(segmentNumber);
+  this->manifestFile->gotoSegment(segmentNumber);
 }
 
 QString PlaybackController::getStatus()

@@ -1,9 +1,9 @@
 /*  Copyright: Christian Feldmann (christian.feldmann@bitmovin.com)
-*/
+ */
 
 #include "VVDecPlayerApplication.h"
 
-#include "MainWindow.h"
+#include <ui/MainWindow.h>
 
 #include <QApplication>
 #include <QSettings>
