@@ -154,7 +154,6 @@ void ViewWidget::drawFPSAndStatusText(QPainter &painter)
   textRect.setSize(textSize);
   textRect.moveTopRight(QPoint(this->width(), 0));
 
-  auto boxRect = textRect + QMargins(5, 5, 5, 5);
   painter.setPen(Qt::white);
   painter.drawText(textRect, Qt::AlignLeft, text);
 }

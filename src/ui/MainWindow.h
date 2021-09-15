@@ -9,6 +9,7 @@
 #include <QMainWindow>
 #include <QMouseEvent>
 #include <QSettings>
+#include <QPointer>
 
 #include <PlaybackController.h>
 #include "ui_MainWindows.h"

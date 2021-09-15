@@ -58,8 +58,4 @@ std::string formatArray(std::string variableName, T1 idx1, T2 idx2, T3 idx3)
          std::to_string(idx3) + "]";
 }
 
-std::string convertSliceCountsToString(const std::map<std::string, unsigned int> &sliceCounts);
-std::vector<std::string> splitX26XOptionsString(const std::string str, const std::string seperator);
-size_t                   getStartCodeOffset(const ByteVector &data);
-
 } // namespace parser

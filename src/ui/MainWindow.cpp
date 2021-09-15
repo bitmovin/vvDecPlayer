@@ -1,7 +1,7 @@
 /*  Copyright: Christian Feldmann (christian.feldmann@bitmovin.com)
  */
 
-#include "Mainwindow.h"
+#include "MainWindow.h"
 
 #include <common/typedef.h>
 #include <decoder/decoderVVDec.h>

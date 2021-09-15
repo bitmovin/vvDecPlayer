@@ -7,6 +7,7 @@
 
 #include <QByteArray>
 #include <QString>
+#include <memory>
 
 struct Segment
 {
