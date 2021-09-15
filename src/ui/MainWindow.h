@@ -10,8 +10,8 @@
 #include <QMouseEvent>
 #include <QSettings>
 
-#include <PlaybackController.h>
 #include "ui_MainWindows.h"
+#include <PlaybackController.h>
 
 class QAction;
 class playlistItem;
@@ -39,6 +39,8 @@ private slots:
   void toggleShowProgressGraph(bool checked);
   void onSelectVVDeCLibrary();
   void onGotoSegmentNumber();
+  void onIncreaseRendition();
+  void onDecreaseRendition();
   void openFixedUrl();
 
 private:

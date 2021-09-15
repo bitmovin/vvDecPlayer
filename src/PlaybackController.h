@@ -26,6 +26,8 @@ public:
   bool openPredefinedManifest(unsigned predefinedManifestID);
 
   void gotoSegment(unsigned segmentNumber);
+  void increaseRendition();
+  void decreaseRendition();
 
   QString getStatus();
   auto    getLastSegmentsData() -> std::deque<SegmentData>;
