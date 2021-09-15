@@ -134,6 +134,18 @@ bool ManifestFile::openFromData(QByteArray data)
   return true;
 }
 
+void ManifestFile::increaseRendition()
+{
+  if (this->currentRendition < this->renditions.size() - 1)
+    this->currentRendition++;
+}
+
+void ManifestFile::decreaseRendition()
+{
+  if (this->currentRendition > 0)
+    this->currentRendition--;
+}
+
 ManifestFile::Segment ManifestFile::getNextSegment()
 {
   Segment segment;

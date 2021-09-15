@@ -18,6 +18,8 @@ public:
   bool openPredefinedManifest(unsigned predefinedManifestID);
 
   void gotoSegment(unsigned segmentNumber) { this->currentSegment = segmentNumber; }
+  void increaseRendition();
+  void decreaseRendition();
 
   struct Segment
   {

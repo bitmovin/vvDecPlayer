@@ -179,8 +179,12 @@ void MainWindow::createMenusAndActions()
                            Qt::CTRL | Qt::Key_P);
 
   auto playbackMenu = this->ui.menuBar->addMenu("Playback");
-  playbackMenu->addAction(
-      "Goto segment number ...", this, &MainWindow::onGotoSegmentNumber, Qt::CTRL | Qt::Key_G);
+  this->addAction(playbackMenu->addAction(
+      "Goto segment number ...", this, &MainWindow::onGotoSegmentNumber, Qt::CTRL | Qt::Key_G));
+  this->addAction(playbackMenu->addAction(
+      "Increase rendition", this, &MainWindow::onIncreaseRendition, Qt::Key_Up));
+  this->addAction(playbackMenu->addAction(
+      "Decrease rendition", this, &MainWindow::onDecreaseRendition, Qt::Key_Down));
 
   auto settingsMenu = this->ui.menuBar->addMenu("Settings");
   settingsMenu->addAction("Select VVdeC library ...", this, &MainWindow::onSelectVVDeCLibrary);
@@ -263,4 +267,14 @@ void MainWindow::onGotoSegmentNumber()
   if (!ok)
     return;
   this->playbackController->gotoSegment(segmentNumber);
+}
+
+void MainWindow::onIncreaseRendition()
+{
+  this->playbackController->increaseRendition();
+}
+
+void MainWindow::onDecreaseRendition()
+{
+  this->playbackController->decreaseRendition();
 }

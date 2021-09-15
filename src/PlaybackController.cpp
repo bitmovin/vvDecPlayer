@@ -56,6 +56,16 @@ void PlaybackController::gotoSegment(unsigned segmentNumber)
   this->manifestFile->gotoSegment(segmentNumber);
 }
 
+void PlaybackController::increaseRendition()
+{
+  this->manifestFile->increaseRendition();
+}
+
+void PlaybackController::decreaseRendition()
+{
+  this->manifestFile->decreaseRendition();
+}
+
 QString PlaybackController::getStatus()
 {
   QString status;
