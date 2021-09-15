@@ -11,6 +11,7 @@
 struct Segment
 {
   QString pathOrURL;
+  unsigned segmentNumber{};
 
   QByteArray  compressedData;
   std::size_t compressedSizeBytes{};
@@ -19,8 +20,9 @@ struct Segment
   using Percent = double;
   Percent downloadProgress{0.0};
   bool    downloadFinished{false};
+  bool    parsingFinished{false};
 
-  unsigned neFrames{24};
+  unsigned nrFrames{24};
 
   std::vector<std::shared_ptr<Frame>> frames;
 };

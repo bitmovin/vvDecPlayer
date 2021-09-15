@@ -1,9 +1,10 @@
 /*  Copyright: Christian Feldmann (christian.feldmann@bitmovin.com)
  */
 
-#include "DecoderManager.h"
+#include "DecoderThread.h"
 
-#include "decoder/decoderVVDec.h"
+#include <common/functions.h>
+#include <decoder/decoderVVDec.h>
 
 #include <QDebug>
 #include <chrono>
@@ -16,26 +17,7 @@
 #define DEBUG(f) ((void)0)
 #endif
 
-namespace
-{
-
-auto START_CODE = QByteArrayLiteral("\x00\x00\x01");
-
-std::optional<std::size_t> findNextNalInCurFile(const QByteArray &data, std::size_t start)
-{
-  if (start >= size_t(data.size()))
-    return {};
-  auto newStart = data.indexOf(START_CODE, start);
-  if (newStart < 0)
-    return {};
-  if (newStart >= 1 && data.at(newStart - 1) == char(0x00))
-    newStart -= 1;
-  return newStart;
-}
-
-} // namespace
-
-DecoderManager::DecoderManager(ILogger *logger, SegmentBuffer *segmentBuffer)
+DecoderThread::DecoderThread(ILogger *logger, SegmentBuffer *segmentBuffer)
     : logger(logger), segmentBuffer(segmentBuffer)
 {
   this->decoder = std::make_unique<decoder::decoderVVDec>();
@@ -46,24 +28,24 @@ DecoderManager::DecoderManager(ILogger *logger, SegmentBuffer *segmentBuffer)
     return;
   }
 
-  this->decoderThread = std::thread(&DecoderManager::runDecoder, this);
+  this->decoderThread = std::thread(&DecoderThread::runDecoder, this);
 }
 
-DecoderManager::~DecoderManager()
+DecoderThread::~DecoderThread()
 {
   this->abort();
   if (this->decoderThread.joinable())
     this->decoderThread.join();
 }
 
-void DecoderManager::abort() { this->decoderAbort = true; }
+void DecoderThread::abort() { this->decoderAbort = true; }
 
-QString DecoderManager::getStatus()
+QString DecoderThread::getStatus() const
 {
   return (this->decoderAbort ? "Abort " : "") + this->statusText;
 }
 
-void DecoderManager::runDecoder()
+void DecoderThread::runDecoder()
 {
   this->logger->addMessage("Started decoder thread", LoggingPriority::Info);
 
@@ -77,8 +59,8 @@ void DecoderManager::runDecoder()
     // std::this_thread::sleep_for(1000ms);
     const auto &data = segmentIt->compressedData;
 
-    this->currentFrameIdxInSegment = 0;
-    if (auto firstPos = findNextNalInCurFile(data, 0))
+    unsigned currentFrameIdxInSegment = 0;
+    if (auto firstPos = findNextNalInData(data, 0))
       currentDataOffset = *firstPos;
     while (!this->decoderAbort)
     {
@@ -87,7 +69,7 @@ void DecoderManager::runDecoder()
       if (state == decoder::DecoderState::NeedsMoreData)
       {
         QByteArray nalData;
-        if (auto nextNalStart = findNextNalInCurFile(data, currentDataOffset + 3))
+        if (auto nextNalStart = findNextNalInData(data, currentDataOffset + 3))
         {
           auto length       = *nextNalStart - currentDataOffset;
           nalData           = data.mid(currentDataOffset, length);
@@ -112,26 +94,30 @@ void DecoderManager::runDecoder()
         DEBUG("Checking for next frame ");
         if (this->decoder->decodeNextFrame())
         {
-          auto newFrame         = std::make_shared<Frame>();
-          newFrame->rawYUVData  = this->decoder->getRawFrameData();
-          newFrame->pixelFormat = this->decoder->getYUVPixelFormat();
-          newFrame->frameSize   = this->decoder->getFrameSize();
-          newFrame->frameState  = FrameState::Decoded;
-          segmentIt->frames.push_back(newFrame);
+          if (currentFrameIdxInSegment >= segmentIt->frames.size())
+          {
+            this->logger->addMessage(QString("Error putting frame %1 into buffer. Frame not found.")
+                                         .arg(currentFrameIdxInSegment),
+                                     LoggingPriority::Error);
+          }
 
-          DEBUG("Retrived frame " << this->currentFrameIdxInSegment << " with size "
-                                  << newFrame->frameSize.width << "x"
-                                  << newFrame->frameSize.height);
-          this->currentFrameIdxInSegment++;
+          auto frame         = segmentIt->frames.at(currentFrameIdxInSegment);
+          frame->rawYUVData  = this->decoder->getRawFrameData();
+          frame->pixelFormat = this->decoder->getYUVPixelFormat();
+          frame->frameSize   = this->decoder->getFrameSize();
+          frame->frameState  = FrameState::Decoded;
+
+          DEBUG("Retrived frame " << currentFrameIdxInSegment << " with size "
+                                  << frame->frameSize.width << "x" << frame->frameSize.height);
+          currentFrameIdxInSegment++;
         }
       }
 
       if (state == decoder::DecoderState::Error)
       {
         DEBUG("Decoding error");
-        this->logger->addMessage(
-            QString("Error decoding frame %1").arg(this->currentFrameIdxInSegment),
-            LoggingPriority::Error);
+        this->logger->addMessage(QString("Error decoding frame %1").arg(currentFrameIdxInSegment),
+                                 LoggingPriority::Error);
         break;
       }
 

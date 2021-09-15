@@ -3,21 +3,22 @@
 
 #pragma once
 
-#include "ILogger.h"
 #include <SegmentBuffer.h>
-#include <condition_variable>
+#include <common/ILogger.h>
 #include <decoder/decoderBase.h>
+
+#include <condition_variable>
 #include <optional>
 #include <thread>
 
-class DecoderManager
+class DecoderThread
 {
 public:
-  DecoderManager(ILogger *logger, SegmentBuffer *segmentBuffer);
-  ~DecoderManager();
+  DecoderThread(ILogger *logger, SegmentBuffer *segmentBuffer);
+  ~DecoderThread();
   void abort();
 
-  QString getStatus() ;
+  QString getStatus() const;
 
 private:
   ILogger *      logger{};
@@ -27,10 +28,8 @@ private:
 
   std::unique_ptr<decoder::decoderBase> decoder;
 
-  std::thread             decoderThread;
-  bool                    decoderAbort{false};
-
-  size_t currentFrameIdxInSegment{};
+  std::thread decoderThread;
+  bool        decoderAbort{false};
 
   QString statusText;
 };

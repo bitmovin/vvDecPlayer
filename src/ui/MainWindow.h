@@ -10,7 +10,7 @@
 #include <QMouseEvent>
 #include <QSettings>
 
-#include "PlaybackController.h"
+#include <PlaybackController.h>
 #include "ui_MainWindows.h"
 
 class QAction;
@@ -32,13 +32,13 @@ protected:
 
 private slots:
 
-  void openLocalFolder();
+  void openJsonManifestFile();
   void toggleFullscreen(bool checked);
   void toggleScaleVideo(bool checked);
   void toggleShowDebug(bool checked);
   void toggleShowProgressGraph(bool checked);
   void onSelectVVDeCLibrary();
-  void openFixedFile();
+  void onGotoSegmentNumber();
   void openFixedUrl();
 
 private:

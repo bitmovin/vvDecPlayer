@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "ILogger.h"
+#include <PlaybackController.h>
+#include <common/ILogger.h>
 
-#include "PlaybackController.h"
 #include <QBasicTimer>
 #include <QImage>
 #include <QTime>

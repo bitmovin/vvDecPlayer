@@ -67,19 +67,23 @@ SegmentBuffer::getBufferStatusForRender(FramePt curPlaybackFrame)
   std::vector<SegmentRenderInfo> states;
   for (auto &segment : this->segments)
   {
-    SegmentRenderInfo segmentState;
-    segmentState.downloadProgress = segment->downloadProgress;
-    segmentState.sizeInBytes      = segment->compressedSizeBytes;
-    segmentState.nrFrames         = segment->neFrames;
-    unsigned frameCounter         = 0;
+    SegmentRenderInfo segmentInfo;
+    segmentInfo.downloadProgress = segment->downloadProgress;
+    segmentInfo.sizeInBytes      = segment->compressedSizeBytes;
+    segmentInfo.nrFrames         = segment->nrFrames;
+    segmentInfo.segmentNumber    = segment->segmentNumber;
+    unsigned frameCounter        = 0;
     for (auto &frame : segment->frames)
     {
-      segmentState.frameStates.push_back(frame->frameState);
+      SegmentRenderInfo::FrameInfo frameInfo;
+      frameInfo.frameState  = frame->frameState;
+      frameInfo.sizeInBytes = frame->nrBytesCompressed;
+      segmentInfo.frameInfo.push_back(frameInfo);
       if (frame == curPlaybackFrame)
-        segmentState.indexOfCurFrameInFrames = frameCounter;
+        segmentInfo.indexOfCurFrameInFrames = frameCounter;
       frameCounter++;
     }
-    states.push_back(segmentState);
+    states.push_back(segmentInfo);
   }
   return states;
 }
@@ -99,10 +103,60 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextDownloadSegment()
   return newSegment;
 }
 
+SegmentBuffer::FramePt SegmentBuffer::getNewFrame() { return std::make_shared<Frame>(); }
+
 void SegmentBuffer::onDownloadFinished()
 {
   this->eventCV.notify_all();
   this->tryToStartNextDownload();
+}
+
+SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToParse()
+{
+  DEBUG("SegmentBuffer: Waiting for first segment to parse.");
+  this->eventCV.notify_all();
+
+  std::shared_lock lk(this->segmentQueueMutex);
+  this->eventCV.wait(lk, [this]() {
+    if (this->aborted)
+      return true;
+    if (this->segments.size() == 0)
+      return false;
+    return (*this->segments.begin())->downloadFinished;
+  });
+
+  if (this->aborted)
+  {
+    DEBUG("SegmentBuffer: First segment to parse not ready because of abort");
+    return {};
+  }
+
+  DEBUG("SegmentBuffer: First segment to parse ready");
+  return *this->segments.begin();
+}
+
+SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToParse(SegmentPtr segmentPtr)
+{
+  DEBUG("SegmentBuffer: Waiting for next segment to parse");
+  this->eventCV.notify_all();
+
+  std::shared_lock lk(this->segmentQueueMutex);
+  this->eventCV.wait(lk, [this, segmentPtr]() {
+    if (this->aborted)
+      return true;
+    if (auto nextSegment = getNextSegmentFromQueue(segmentPtr, this->segments))
+      return nextSegment->downloadFinished;
+    return false;
+  });
+
+  if (this->aborted)
+  {
+    DEBUG("SegmentBuffer: Next segment to parse not ready because of abort");
+    return {};
+  }
+
+  DEBUG("SegmentBuffer: Next segment to parse ready");
+  return getNextSegmentFromQueue(segmentPtr, this->segments);
 }
 
 SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToDecode()
@@ -116,7 +170,7 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToDecode()
       return true;
     if (this->segments.size() == 0)
       return false;
-    return (*this->segments.begin())->downloadFinished;
+    return (*this->segments.begin())->parsingFinished;
   });
 
   if (this->aborted)
@@ -139,7 +193,7 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToDecode(SegmentPtr segme
     if (this->aborted)
       return true;
     if (auto nextSegment = getNextSegmentFromQueue(segmentPtr, this->segments))
-      return nextSegment->downloadFinished;
+      return nextSegment->parsingFinished;
     return false;
   });
 
@@ -163,7 +217,9 @@ SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToConvert()
     if (this->aborted)
       return true;
     auto frameAvailabe = this->segments.size() > 0 && this->segments.front()->frames.size() > 0;
-    return frameAvailabe;
+    if (!frameAvailabe)
+      return false;
+    return this->segments.front()->frames.at(0)->frameState == FrameState::Decoded;
   });
 
   if (this->aborted)
@@ -187,7 +243,9 @@ SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToConvert(FrameIterator 
     if (this->aborted)
       return true;
     auto nextFrame = getNextFrame(frameIt, this->segments);
-    return !nextFrame.isNull();
+    if (nextFrame.isNull())
+      return false;
+    return nextFrame.frame->frameState == FrameState::Decoded;
   });
 
   if (this->aborted)

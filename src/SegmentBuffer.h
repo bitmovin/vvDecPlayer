@@ -55,13 +55,25 @@ public:
     double                  downloadProgress{};
     std::size_t             sizeInBytes{};
     unsigned                nrFrames{};
-    std::vector<FrameState> frameStates;
     std::optional<unsigned> indexOfCurFrameInFrames;
+    unsigned                segmentNumber{};
+
+    struct FrameInfo
+    {
+      FrameState  frameState{};
+      std::size_t sizeInBytes{};
+    };
+    std::vector<FrameInfo> frameInfo;
   };
   std::vector<SegmentRenderInfo> getBufferStatusForRender(FramePt curPlaybackFrame);
 
-  // The downloader will get new segments from here. This will not block.
+  // These provide new (or maybe recycled) segments/frames. These do not block.
   SegmentPtr getNextDownloadSegment();
+  FramePt    getNewFrame();
+
+  // The parser will get segments to parser here (and may get blocked if no segment is ready yet)
+  SegmentPtr getFirstSegmentToParse();
+  SegmentPtr getNextSegmentToParse(SegmentPtr segment);
 
   // The decoder will get segments to decode here (and may get blocked if too many
   // decoded frames are already in the buffer)

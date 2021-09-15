@@ -3,13 +3,14 @@
 
 #pragma once
 
-#include "ILogger.h"
-#include <QNetworkAccessManager>
+#include <ManifestFile.h>
 #include <SegmentBuffer.h>
+#include <common/ILogger.h>
 #include <common/Segment.h>
 #include <common/typedef.h>
 
 #include <QDir>
+#include <QNetworkAccessManager>
 #include <deque>
 #include <memory>
 #include <mutex>
@@ -31,10 +32,9 @@ public:
   FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer);
   ~FileDownloader() = default;
 
-  void openDirectory(QDir path, QString segmentPattern);
-  void openURL(QString baseUrl, QString segmentPattern, unsigned segmentNrMax);
+  void activateManifest(ManifestFile *manifestFile);
 
-  QString getStatus();
+  QString getStatus() const;
 
 signals:
   void downloadFinished();
@@ -48,11 +48,9 @@ private slots:
 private:
   ILogger *      logger{};
   SegmentBuffer *segmentBuffer{};
+  ManifestFile * manifestFile{};
 
-  SegmentBuffer::SegmentPtr currentSegment; 
-
-  std::vector<QString>           fileList;
-  std::vector<QString>::iterator fileListIt;
+  SegmentBuffer::SegmentPtr currentSegment;
 
   bool isLocalSource{false};
 

@@ -27,7 +27,7 @@ FrameConversionThread::~FrameConversionThread()
 
 void FrameConversionThread::abort() { this->conversionAbort = true; }
 
-QString FrameConversionThread::getStatus()
+QString FrameConversionThread::getStatus() const
 {
   return (this->conversionAbort ? "Abort " : "") + this->statusText;
 }

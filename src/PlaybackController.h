@@ -3,12 +3,14 @@
 
 #pragma once
 
-#include "DecoderManager.h"
-#include "FileDownloader.h"
-#include "FrameConversionThread.h"
-#include "ILogger.h"
+#include <FileDownloader.h>
+#include <ManifestFile.h>
 #include <SegmentBuffer.h>
 #include <common/Frame.h>
+#include <common/ILogger.h>
+#include <threads/DecoderThread.h>
+#include <threads/FileParserThread.h>
+#include <threads/FrameConversionThread.h>
 
 #include <QDir>
 
@@ -20,8 +22,10 @@ public:
 
   void reset();
 
-  void openDirectory(QDir path, QString segmentPattern);
-  void openURL(QString url, QString segmentPattern, unsigned segmentNrMax);
+  bool openJsonManifestFile(QString jsonManifestFile);
+  bool openPredefinedManifest(unsigned predefinedManifestID);
+
+  void gotoSegment(unsigned segmentNumber);
 
   QString getStatus();
   auto    getLastSegmentsData() -> std::deque<SegmentData>;
@@ -32,8 +36,11 @@ private:
   ILogger *logger{};
 
   std::unique_ptr<FileDownloader>        downloader;
-  std::unique_ptr<DecoderManager>        decoder;
+  std::unique_ptr<DecoderThread>         decoder;
+  std::unique_ptr<FileParserThread>      parser;
   std::unique_ptr<FrameConversionThread> conversion;
+
+  std::unique_ptr<ManifestFile> manifestFile;
 
   SegmentBuffer segmentBuffer;
 };

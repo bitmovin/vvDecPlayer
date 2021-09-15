@@ -15,6 +15,16 @@
 #define DEBUG(f) ((void)0)
 #endif
 
+namespace
+{
+
+bool isURLLocalFile(QString url)
+{
+  return !url.startsWith("https://") && !url.startsWith("http://");
+}
+
+}
+
 FileDownloader::FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer)
     : logger(logger), segmentBuffer(segmentBuffer)
 {
@@ -33,7 +43,7 @@ FileDownloader::FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer)
       this, &FileDownloader::downloadFinished, segmentBuffer, &SegmentBuffer::onDownloadFinished);
 }
 
-QString FileDownloader::getStatus() { return this->statusText; }
+QString FileDownloader::getStatus() const { return this->statusText; }
 
 void FileDownloader::replyFinished(QNetworkReply *reply)
 {
@@ -70,48 +80,9 @@ void FileDownloader::updateDownloadProgress(int64_t val, int64_t max)
   }
 }
 
-void FileDownloader::openDirectory(QDir path, QString segmentPattern)
+void FileDownloader::activateManifest(ManifestFile *manifestFile)
 {
-  DEBUG("Open URL " << path << " with pattern " << segmentPattern);
-  unsigned segmentNr = 0;
-  while (true)
-  {
-    auto file = segmentPattern;
-    file.replace("%i", QString("%1").arg(segmentNr));
-    if (!path.exists(file))
-      break;
-
-    auto fullFilePath = path.filePath(file);
-    this->fileList.push_back(fullFilePath);
-
-    segmentNr++;
-  }
-
-  this->logger->addMessage(QString("Found %1 local files to play.").arg(segmentNr),
-                           LoggingPriority::Info);
-
-  this->isLocalSource = true;
-  this->fileListIt    = this->fileList.begin();
-  this->downloadNextFile();
-}
-
-void FileDownloader::openURL(QString baseUrl, QString segmentPattern, unsigned segmentNrMax)
-{
-  DEBUG("Open URL " << baseUrl);
-  // We don't check these here. If these don't exist we will get a download error later.
-  for (auto i = 0u; i < segmentNrMax; i++)
-  {
-    auto seg = segmentPattern;
-    seg.replace("%i", QString("%1").arg(i));
-    auto segmentUrl = baseUrl + seg;
-    this->fileList.push_back(segmentUrl);
-  }
-
-  this->logger->addMessage(QString("Added %1 remote URLs to file list.").arg(segmentNrMax),
-                           LoggingPriority::Info);
-
-  this->isLocalSource = false;
-  this->fileListIt    = this->fileList.begin();
+  this->manifestFile = manifestFile;
   this->downloadNextFile();
 }
 
@@ -119,18 +90,22 @@ void FileDownloader::downloadNextFile()
 {
   QNetworkAccessManager networkManager;
 
-  this->currentSegment = segmentBuffer->getNextDownloadSegment();
+  auto manifestSegment = this->manifestFile->getNextSegment();
 
-  if (this->isLocalSource)
+  this->currentSegment                = segmentBuffer->getNextDownloadSegment();
+  this->currentSegment->segmentNumber = manifestSegment.segmentNumber;
+
+  auto url = manifestSegment.downloadUrl;
+  if (isURLLocalFile(url))
   {
-    QFile inputFile(*this->fileListIt);
+    QFile inputFile(url);
     if (!inputFile.open(QIODevice::ReadOnly))
-      this->logger->addMessage(QString("Error reading file %1").arg(*this->fileListIt),
+      this->logger->addMessage(QString("Error reading file %1").arg(url),
                                LoggingPriority::Error);
     else
     {
       // For local files the download finishes immediately
-      DEBUG("Loading local file " << *this->fileListIt);
+      DEBUG("Loading local file " << url);
       this->currentSegment->compressedData      = inputFile.readAll();
       this->currentSegment->downloadProgress    = 100.0;
       this->currentSegment->downloadFinished    = true;
@@ -140,13 +115,11 @@ void FileDownloader::downloadNextFile()
   }
   else
   {
-    DEBUG("Start download of file " << *this->fileListIt);
+    DEBUG("Start download of file " << url);
 
-    QNetworkRequest request(*this->fileListIt);
+    QNetworkRequest request(url);
     QNetworkReply * reply = this->networkManager.get(request);
     connect(reply, &QNetworkReply::downloadProgress, this, &FileDownloader::updateDownloadProgress);
     this->statusText = "Download";
   }
-
-  this->fileListIt++;
 }

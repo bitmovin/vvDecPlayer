@@ -3,16 +3,16 @@
 
 #pragma once
 
-#include <ILogger.h>
-#include <QByteArray>
-#include <QImage>
 #include <SegmentBuffer.h>
 #include <common/Frame.h>
+#include <common/ILogger.h>
+
+#include <QByteArray>
+#include <QImage>
 #include <condition_variable>
 #include <optional>
 #include <queue>
 #include <thread>
-
 
 class FrameConversionThread
 {
@@ -21,7 +21,7 @@ public:
   ~FrameConversionThread();
   void abort();
 
-  QString getStatus();
+  QString getStatus() const;
 
 private:
   ILogger *      logger{};
