@@ -50,7 +50,7 @@ Size parseResolutionString(QString resolutionString)
 }
 
 const auto PREDEFINED_MANIFEST_0 = QByteArray(
-  R"--json--({
+    R"--json--({
     "Name": "Sintel 720p only",
     "NrSegments": 888,
     "Renditions": [
@@ -61,8 +61,7 @@ const auto PREDEFINED_MANIFEST_0 = QByteArray(
         "Url": "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/Sintel720p/segment-%i.vvc"
       }
     ]
-  })--json--"
-);
+  })--json--");
 
 } // namespace
 
@@ -164,6 +163,19 @@ void ManifestFile::decreaseRendition()
 {
   if (this->currentRendition > 0)
     this->currentRendition--;
+}
+
+QString ManifestFile::getCurrentRenditionInfo()
+{
+  auto id = this->currentRendition;
+  if (id >= this->renditions.size())
+    return "Invalid";
+  const auto &rendition = this->renditions.at(id);
+  return QString("%1 - %2x%3@%4")
+      .arg(rendition.name)
+      .arg(rendition.resolution.width)
+      .arg(rendition.resolution.height)
+      .arg(rendition.fps);
 }
 
 ManifestFile::Segment ManifestFile::getNextSegment()

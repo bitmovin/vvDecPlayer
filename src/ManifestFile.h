@@ -41,11 +41,13 @@ public:
   void increaseRendition();
   void decreaseRendition();
 
+  QString getCurrentRenditionInfo();
+
   struct Segment
   {
     unsigned segmentNumber{};
     unsigned rendition{};
-    QString downloadUrl;
+    QString  downloadUrl;
   };
   Segment getNextSegment();
 
@@ -56,14 +58,14 @@ private:
 
   QString filename;
 
-  QString name{"NoName"};
+  QString  name{"NoName"};
   unsigned numberSegments{};
 
   struct Rendition
   {
     QString name;
-    Size resolution{};
-    double fps{};
+    Size    resolution{};
+    double  fps{};
     QString url;
   };
   std::vector<Rendition> renditions;

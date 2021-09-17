@@ -53,6 +53,7 @@ public:
   auto    getLastSegmentsData() -> std::deque<SegmentData>;
 
   SegmentBuffer *getSegmentBuffer() { return &this->segmentBuffer; }
+  ManifestFile * getManifest() { return this->manifestFile.get(); }
 
 private:
   ILogger *logger{};

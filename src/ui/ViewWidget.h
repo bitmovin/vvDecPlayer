@@ -66,6 +66,7 @@ private:
 
   void drawAndUpdateMessages(QPainter &painter);
   void drawFPSAndStatusText(QPainter &painter);
+  void drawRenditionInfo(QPainter &painter);
   void drawProgressGraph(QPainter &painter);
 
   QBasicTimer  timer;

@@ -112,6 +112,7 @@ void ViewWidget::paintEvent(QPaintEvent *)
 
   this->drawAndUpdateMessages(painter);
   this->drawFPSAndStatusText(painter);
+  this->drawRenditionInfo(painter);
   this->drawProgressGraph(painter);
 }
 
@@ -173,6 +174,23 @@ void ViewWidget::drawFPSAndStatusText(QPainter &painter)
   QRect textRect;
   textRect.setSize(textSize);
   textRect.moveTopRight(QPoint(this->width(), 0));
+
+  painter.setPen(Qt::white);
+  painter.drawText(textRect, Qt::AlignLeft, text);
+}
+
+void ViewWidget::drawRenditionInfo(QPainter &painter)
+{
+  auto manifest = this->playbackController->getManifest();
+  if (manifest == nullptr)
+    return;
+  
+  auto text = manifest->getCurrentRenditionInfo();
+  auto textSize = QFontMetrics(painter.font()).size(0, text);
+
+  QRect textRect;
+  textRect.setSize(textSize);
+  textRect.moveTopLeft(QPoint(0, 0));
 
   painter.setPen(Qt::white);
   painter.drawText(textRect, Qt::AlignLeft, text);
