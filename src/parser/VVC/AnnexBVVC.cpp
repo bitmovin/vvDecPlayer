@@ -49,12 +49,6 @@ namespace parser
 
 using namespace vvc;
 
-double AnnexBVVC::getFramerate() const
-{
-  // Parsing of VUI not implemented yet
-  return DEFAULT_FRAMERATE;
-}
-
 Size AnnexBVVC::getSequenceSizeSamples() const
 {
   for (const auto &nal : this->nalUnitsForSeeking)

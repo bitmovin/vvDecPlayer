@@ -165,32 +165,30 @@ void ManifestFile::decreaseRendition()
     this->currentRendition--;
 }
 
-QString ManifestFile::getCurrentRenditionInfo()
+std::optional<ManifestFile::Rendition> ManifestFile::getCurrentRenditionInfo()
 {
   auto id = this->currentRendition;
   if (id >= this->renditions.size())
-    return "Invalid";
-  const auto &rendition = this->renditions.at(id);
-  return QString("%1 - %2x%3@%4")
-      .arg(rendition.name)
-      .arg(rendition.resolution.width)
-      .arg(rendition.resolution.height)
-      .arg(rendition.fps);
+    return {};
+  return this->renditions.at(id);
 }
 
-ManifestFile::Segment ManifestFile::getNextSegment()
+Segment::PlaybackInfo ManifestFile::getNextSegment()
 {
-  Segment segment;
-  segment.segmentNumber = this->currentSegment;
-  segment.rendition     = this->currentRendition;
+  auto &rendition = this->renditions.at(this->currentRendition);
 
-  auto url = this->renditions.at(this->currentRendition).url;
+  Segment::PlaybackInfo segmentInfo;
+  segmentInfo.segmentNumber = this->currentSegment;
+  segmentInfo.rendition     = this->currentRendition;
+  segmentInfo.fps           = rendition.fps;
+
+  auto url = rendition.url;
   url.replace("%i", QString("%1").arg(this->currentSegment));
-  segment.downloadUrl = url;
+  segmentInfo.downloadUrl = url;
 
   this->currentSegment++;
   if (this->currentSegment >= this->numberSegments)
     this->currentSegment = 0;
 
-  return segment;
+  return segmentInfo;
 }

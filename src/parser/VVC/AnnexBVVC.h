@@ -50,7 +50,6 @@ public:
   ~AnnexBVVC() = default;
 
   // Get some properties
-  double         getFramerate() const override;
   Size           getSequenceSizeSamples() const override;
   YUVPixelFormat getPixelFormat() const override;
 

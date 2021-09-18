@@ -25,8 +25,10 @@ SOFTWARE. */
 
 #include <common/ILogger.h>
 #include <common/typedef.h>
+#include <common/Segment.h>
 
 #include <QString>
+#include <optional>
 
 class ManifestFile
 {
@@ -41,15 +43,16 @@ public:
   void increaseRendition();
   void decreaseRendition();
 
-  QString getCurrentRenditionInfo();
-
-  struct Segment
+  struct Rendition
   {
-    unsigned segmentNumber{};
-    unsigned rendition{};
-    QString  downloadUrl;
+    QString name;
+    Size    resolution{};
+    double  fps{};
+    QString url;
   };
-  Segment getNextSegment();
+  std::optional<Rendition> getCurrentRenditionInfo();
+
+  Segment::PlaybackInfo getNextSegment();
 
 private:
   ILogger *logger{};
@@ -61,13 +64,6 @@ private:
   QString  name{"NoName"};
   unsigned numberSegments{};
 
-  struct Rendition
-  {
-    QString name;
-    Size    resolution{};
-    double  fps{};
-    QString url;
-  };
   std::vector<Rendition> renditions;
 
   unsigned currentRendition{};

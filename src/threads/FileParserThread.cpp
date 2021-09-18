@@ -105,17 +105,17 @@ void FileParserThread::runParser()
           // New AU
           DEBUG("AU PTS:" << parseResult.bitrateEntry->pts
                           << " bitrate:" << parseResult.bitrateEntry->bitrate);
-          auto newFrame = segmentBuffer->getNewFrame();
+          auto newFrame               = segmentBuffer->addNewFrameToSegment(segmentIt);
           newFrame->nrBytesCompressed = parseResult.bitrateEntry->bitrate;
-          newFrame->poc = parseResult.bitrateEntry->pts;
-          segmentIt->frames.push_back(newFrame);
+          newFrame->poc               = parseResult.bitrateEntry->pts;
         }
       }
       else
       {
-        this->logger->addMessage(
-            QString("Error parsing nal %1 in Segment %2").arg(nalID).arg(segmentIt->segmentNumber),
-            LoggingPriority::Error);
+        this->logger->addMessage(QString("Error parsing nal %1 in Segment %2")
+                                     .arg(nalID)
+                                     .arg(segmentIt->playbackInfo.segmentNumber),
+                                 LoggingPriority::Error);
       }
 
       if (nalID == -1)

@@ -223,8 +223,8 @@ void MainWindow::openJsonManifestFile()
 
     if (this->playbackController->openJsonManifestFile(files[0]))
     {
-      const auto initialGuessedFPS = 24.0;
-      this->ui.viewWidget->setPlaybackFps(initialGuessedFPS);
+      auto renditionInfo = this->playbackController->getManifest()->getCurrentRenditionInfo();
+      this->ui.viewWidget->setPlaybackFps(renditionInfo->fps);
     }
   }
 }
@@ -273,8 +273,8 @@ void MainWindow::openFixedUrl()
   {
     auto id = action->data().toInt();
     this->playbackController->openPredefinedManifest(id);
-    const auto initialGuessedFPS = 24.0;
-    this->ui.viewWidget->setPlaybackFps(initialGuessedFPS);
+    auto renditionInfo = this->playbackController->getManifest()->getCurrentRenditionInfo();
+    this->ui.viewWidget->setPlaybackFps(renditionInfo->fps);
   }
 }
 
@@ -289,12 +289,6 @@ void MainWindow::onGotoSegmentNumber()
   this->playbackController->gotoSegment(segmentNumber);
 }
 
-void MainWindow::onIncreaseRendition()
-{
-  this->playbackController->increaseRendition();
-}
+void MainWindow::onIncreaseRendition() { this->playbackController->increaseRendition(); }
 
-void MainWindow::onDecreaseRendition()
-{
-  this->playbackController->decreaseRendition();
-}
+void MainWindow::onDecreaseRendition() { this->playbackController->decreaseRendition(); }

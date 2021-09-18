@@ -28,8 +28,8 @@ SOFTWARE. */
 #include <optional>
 #include <set>
 
-#include "common/TreeItem.h"
 #include "YUV/YUVPixelFormat.h"
+#include "common/TreeItem.h"
 
 using namespace YUV_Internals;
 
@@ -87,7 +87,6 @@ public:
                                          std::optional<pairUint64>   nalStartEndPosFile = {}) = 0;
 
   // Get some format properties
-  virtual double         getFramerate() const           = 0;
   virtual Size           getSequenceSizeSamples() const = 0;
   virtual YUVPixelFormat getPixelFormat() const         = 0;
 
@@ -164,7 +163,7 @@ private:
   // The same list of frames but sorted in display order. Generated from the list above whenever
   // needed.
   std::vector<AnnexBFrame> frameListDisplayOder;
-  void                updateFrameListDisplayOrder();
+  void                     updateFrameListDisplayOrder();
 };
 
 } // namespace parser

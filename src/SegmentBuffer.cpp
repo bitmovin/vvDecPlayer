@@ -91,7 +91,8 @@ SegmentBuffer::getBufferStatusForRender(FramePt curPlaybackFrame)
     segmentInfo.downloadProgress = segment->downloadProgress;
     segmentInfo.sizeInBytes      = segment->compressedSizeBytes;
     segmentInfo.nrFrames         = segment->nrFrames;
-    segmentInfo.segmentNumber    = segment->segmentNumber;
+    segmentInfo.segmentNumber    = segment->playbackInfo.segmentNumber;
+    segmentInfo.renditionNumber  = segment->playbackInfo.rendition;
     unsigned frameCounter        = 0;
     for (auto &frame : segment->frames)
     {
@@ -123,7 +124,14 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextDownloadSegment()
   return newSegment;
 }
 
-SegmentBuffer::FramePt SegmentBuffer::getNewFrame() { return std::make_shared<Frame>(); }
+SegmentBuffer::FramePt SegmentBuffer::addNewFrameToSegment(SegmentPtr segment)
+{
+  std::shared_lock lk(this->segmentQueueMutex);
+  auto             newFrame = std::make_shared<Frame>();
+  segment->frames.push_back(newFrame);
+  segment->nrFrames++;
+  return newFrame;
+}
 
 void SegmentBuffer::onDownloadFinished()
 {

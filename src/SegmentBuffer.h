@@ -77,6 +77,7 @@ public:
     unsigned                nrFrames{};
     std::optional<unsigned> indexOfCurFrameInFrames;
     unsigned                segmentNumber{};
+    unsigned                renditionNumber{};
 
     struct FrameInfo
     {
@@ -89,7 +90,7 @@ public:
 
   // These provide new (or maybe recycled) segments/frames. These do not block.
   SegmentPtr getNextDownloadSegment();
-  FramePt    getNewFrame();
+  FramePt    addNewFrameToSegment(SegmentPtr segment);
 
   // The parser will get segments to parser here (and may get blocked if no segment is ready yet)
   SegmentPtr getFirstSegmentToParse();

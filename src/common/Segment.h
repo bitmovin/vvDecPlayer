@@ -31,8 +31,14 @@ SOFTWARE. */
 
 struct Segment
 {
-  QString pathOrURL;
-  unsigned segmentNumber{};
+  struct PlaybackInfo
+  {
+    unsigned segmentNumber{};
+    unsigned rendition{};
+    QString  downloadUrl;
+    double   fps{};
+  };
+  PlaybackInfo playbackInfo{};
 
   QByteArray  compressedData;
   std::size_t compressedSizeBytes{};
@@ -43,7 +49,7 @@ struct Segment
   bool    downloadFinished{false};
   bool    parsingFinished{false};
 
-  unsigned nrFrames{24};
+  unsigned nrFrames{};
 
   std::vector<std::shared_ptr<Frame>> frames;
 };

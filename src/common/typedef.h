@@ -170,5 +170,3 @@ template <typename T> std::string to_string(const std::pair<T, T> typePair)
   ss << "(" << typePair.first << ", " << typePair.second << ")";
   return ss.str();
 }
-
-#define DEFAULT_FRAMERATE 24;

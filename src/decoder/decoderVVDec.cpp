@@ -232,6 +232,7 @@ void decoderVVDec::resetDecoder()
     if (this->lib.vvdec_decoder_close(decoder) != VVDEC_OK)
       return setError("Reset: Freeing the decoder failded.");
 
+  decoderBase::resetDecoder();
   this->decoder = nullptr;
 
   this->allocateNewDecoder();

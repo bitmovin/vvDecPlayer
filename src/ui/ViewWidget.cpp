@@ -184,8 +184,13 @@ void ViewWidget::drawRenditionInfo(QPainter &painter)
   auto manifest = this->playbackController->getManifest();
   if (manifest == nullptr)
     return;
-  
-  auto text = manifest->getCurrentRenditionInfo();
+
+  auto rendition = manifest->getCurrentRenditionInfo();
+  auto text      = QString("%1 - %2x%3@%4")
+                  .arg(rendition->name)
+                  .arg(rendition->resolution.width)
+                  .arg(rendition->resolution.height)
+                  .arg(rendition->fps);
   auto textSize = QFontMetrics(painter.font()).size(0, text);
 
   QRect textRect;
@@ -268,7 +273,7 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
 
         painter.setPen(Qt::black);
         painter.drawText(bitrateBarRect,
-                         QString("Seg: %1").arg(segment.segmentNumber),
+                         QString("R%1S%2").arg(segment.renditionNumber).arg(segment.segmentNumber),
                          Qt::AlignHCenter | Qt::AlignBottom);
 
         segmentLeft += bitrateBarRect.width() + spaceBetweenSegments;
@@ -396,6 +401,6 @@ void ViewWidget::getNextFrame()
   }
 
   this->frameSegmentOffset++;
-  if (this->frameSegmentOffset > 24)
+  if (this->frameSegmentOffset > displayFrame.segment->nrFrames)
     this->frameSegmentOffset = 0;
 }

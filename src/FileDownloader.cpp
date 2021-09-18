@@ -43,7 +43,7 @@ bool isURLLocalFile(QString url)
   return !url.startsWith("https://") && !url.startsWith("http://");
 }
 
-}
+} // namespace
 
 FileDownloader::FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer)
     : logger(logger), segmentBuffer(segmentBuffer)
@@ -110,18 +110,17 @@ void FileDownloader::downloadNextFile()
 {
   QNetworkAccessManager networkManager;
 
-  auto manifestSegment = this->manifestFile->getNextSegment();
+  auto segmentInfo = this->manifestFile->getNextSegment();
 
-  this->currentSegment                = segmentBuffer->getNextDownloadSegment();
-  this->currentSegment->segmentNumber = manifestSegment.segmentNumber;
+  this->currentSegment               = segmentBuffer->getNextDownloadSegment();
+  this->currentSegment->playbackInfo = segmentInfo;
 
-  auto url = manifestSegment.downloadUrl;
+  auto url = segmentInfo.downloadUrl;
   if (isURLLocalFile(url))
   {
     QFile inputFile(url);
     if (!inputFile.open(QIODevice::ReadOnly))
-      this->logger->addMessage(QString("Error reading file %1").arg(url),
-                               LoggingPriority::Error);
+      this->logger->addMessage(QString("Error reading file %1").arg(url), LoggingPriority::Error);
     else
     {
       // For local files the download finishes immediately

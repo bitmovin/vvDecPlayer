@@ -74,9 +74,6 @@ void DecoderThread::runDecoder()
 
   while (!this->decoderAbort)
   {
-    // // Simulate decoding
-    // using namespace std::chrono_literals;
-    // std::this_thread::sleep_for(1000ms);
     const auto &data = segmentIt->compressedData;
 
     unsigned currentFrameIdxInSegment = 0;
@@ -136,7 +133,10 @@ void DecoderThread::runDecoder()
       if (state == decoder::DecoderState::Error)
       {
         DEBUG("Decoding error");
-        this->logger->addMessage(QString("Error decoding frame %1").arg(currentFrameIdxInSegment),
+        this->logger->addMessage(QString("Error decoding rend %1 seg %2 frame %3")
+                                     .arg(segmentIt->playbackInfo.rendition)
+                                     .arg(segmentIt->playbackInfo.segmentNumber)
+                                     .arg(currentFrameIdxInSegment),
                                  LoggingPriority::Error);
         break;
       }
@@ -156,6 +156,7 @@ void DecoderThread::runDecoder()
     segmentIt        = this->segmentBuffer->getNextSegmentToDecode(segmentIt);
     this->statusText = "Decoding";
 
+    DEBUG("Reset decoder");
     this->decoder->resetDecoder();
   }
 }
