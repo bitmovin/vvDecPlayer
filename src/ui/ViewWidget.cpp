@@ -252,7 +252,8 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
 
       // Draw the box for the segment
       {
-        auto absHeight = segment.sizeInBytes / 1000;
+        const auto maxBoxHeight = 100;
+        auto       absHeight    = segment.sizeInBytes * 8 * maxBoxHeight / this->plotMaxBitrate;
 
         QRectF bitrateBarRect;
         bitrateBarRect.setWidth(segment.nrFrames * frameRect.width() +
@@ -335,6 +336,12 @@ void ViewWidget::setPlaybackFps(double framerate)
     auto timerInterval = int(1000.0 / this->targetFPS);
     timer.start(timerInterval, Qt::PreciseTimer, this);
   }
+}
+
+void ViewWidget::setPlotMaxBitrate(unsigned plotMaxBitrate)
+{
+  if (plotMaxBitrate > 0)
+    this->plotMaxBitrate = plotMaxBitrate;
 }
 
 void ViewWidget::onPlayPause()

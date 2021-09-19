@@ -24,8 +24,8 @@ SOFTWARE. */
 #pragma once
 
 #include <common/ILogger.h>
-#include <common/typedef.h>
 #include <common/Segment.h>
+#include <common/typedef.h>
 
 #include <QString>
 #include <optional>
@@ -50,7 +50,8 @@ public:
     double  fps{};
     QString url;
   };
-  std::optional<Rendition> getCurrentRenditionInfo();
+  std::optional<Rendition> getCurrentRenditionInfo() const;
+  unsigned                 getPlotMaxBitrate() const { return this->plotMaxBitrate; }
 
   Segment::PlaybackInfo getNextSegment();
 
@@ -63,6 +64,7 @@ private:
 
   QString  name{"NoName"};
   unsigned numberSegments{};
+  unsigned plotMaxBitrate{};
 
   std::vector<Rendition> renditions;
 

@@ -49,6 +49,7 @@ public:
   void setShowProgressGraph(bool drawGraph);
 
   void setPlaybackFps(double framerate);
+  void setPlotMaxBitrate(unsigned plotMaxBitrate);
   void onPlayPause();
   void onStep();
 
@@ -85,6 +86,7 @@ private:
   int debugInfoRenderMaxWidth{};
 
   unsigned frameSegmentOffset{};
+  unsigned plotMaxBitrate{1000};
 
   bool scaleVideo{false};
   bool showDebugInfo{false};

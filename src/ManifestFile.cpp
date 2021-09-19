@@ -111,6 +111,9 @@ bool ManifestFile::openFromData(QByteArray data)
       throw std::logic_error("NrSegments not found");
     this->numberSegments = unsigned(mainObject["NrSegments"].toInt());
 
+    if (mainObject.contains("PlotMaxBitrate"))
+      this->plotMaxBitrate = unsigned(mainObject["PlotMaxBitrate"].toInt());
+
     if (!mainObject.contains("Renditions"))
       throw std::logic_error("No renditions found");
     auto renditions = mainObject["Renditions"].toArray();
@@ -165,7 +168,7 @@ void ManifestFile::decreaseRendition()
     this->currentRendition--;
 }
 
-std::optional<ManifestFile::Rendition> ManifestFile::getCurrentRenditionInfo()
+std::optional<ManifestFile::Rendition> ManifestFile::getCurrentRenditionInfo() const
 {
   auto id = this->currentRendition;
   if (id >= this->renditions.size())
