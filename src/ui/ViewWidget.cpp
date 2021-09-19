@@ -73,47 +73,51 @@ void ViewWidget::paintEvent(QPaintEvent *)
   QPainter painter(this);
   painter.setRenderHint(QPainter::RenderHint::SmoothPixmapTransform);
 
-  if (this->curFrame.isNull())
-    return;
-
   DEBUG("Paint event");
 
-  auto &rgbImage = this->curFrame.frame->rgbImage;
-  if (!rgbImage.isNull())
-  {
-    if (this->scaleVideo)
-    {
-      QRect drawRect;
-      auto  aspectRatioImage  = double(rgbImage.width()) / double(rgbImage.height());
-      auto  aspectRatioWidget = double(this->width()) / double(this->height());
-      if (aspectRatioWidget > aspectRatioImage)
-      {
-        // Full height, black bars left and right
-        drawRect.setHeight(this->height());
-        drawRect.setWidth(aspectRatioImage * this->height());
-        drawRect.moveTopLeft(QPoint((this->width() - drawRect.width()) / 2, 0));
-      }
-      else
-      {
-        // Full width, black bars top and bottom
-        drawRect.setHeight(this->width() / aspectRatioImage);
-        drawRect.setWidth(this->width());
-        drawRect.moveTopLeft(QPoint(0, (this->height() - drawRect.height()) / 2));
-      }
-      painter.drawImage(drawRect, rgbImage);
-    }
-    else
-    {
-      int x = (this->width() - rgbImage.width()) / 2;
-      int y = (this->height() - rgbImage.height()) / 2;
-      painter.drawImage(x, y, rgbImage);
-    }
-  }
-
+  this->drawCurrentFrame(painter);
   this->drawAndUpdateMessages(painter);
   this->drawFPSAndStatusText(painter);
   this->drawRenditionInfo(painter);
   this->drawProgressGraph(painter);
+}
+
+void ViewWidget::drawCurrentFrame(QPainter &painter)
+{
+  if (this->curFrame.isNull())
+    return;
+
+  auto &rgbImage = this->curFrame.frame->rgbImage;
+  if (rgbImage.isNull())
+    return;
+
+  if (this->scaleVideo)
+  {
+    QRect drawRect;
+    auto  aspectRatioImage  = double(rgbImage.width()) / double(rgbImage.height());
+    auto  aspectRatioWidget = double(this->width()) / double(this->height());
+    if (aspectRatioWidget > aspectRatioImage)
+    {
+      // Full height, black bars left and right
+      drawRect.setHeight(this->height());
+      drawRect.setWidth(aspectRatioImage * this->height());
+      drawRect.moveTopLeft(QPoint((this->width() - drawRect.width()) / 2, 0));
+    }
+    else
+    {
+      // Full width, black bars top and bottom
+      drawRect.setHeight(this->width() / aspectRatioImage);
+      drawRect.setWidth(this->width());
+      drawRect.moveTopLeft(QPoint(0, (this->height() - drawRect.height()) / 2));
+    }
+    painter.drawImage(drawRect, rgbImage);
+  }
+  else
+  {
+    int x = (this->width() - rgbImage.width()) / 2;
+    int y = (this->height() - rgbImage.height()) / 2;
+    painter.drawImage(x, y, rgbImage);
+  }
 }
 
 void ViewWidget::drawAndUpdateMessages(QPainter &painter)
@@ -182,23 +186,52 @@ void ViewWidget::drawFPSAndStatusText(QPainter &painter)
 void ViewWidget::drawRenditionInfo(QPainter &painter)
 {
   auto manifest = this->playbackController->getManifest();
-  if (manifest == nullptr)
+  if (manifest == nullptr || this->curFrame.isNull())
     return;
 
-  auto rendition = manifest->getCurrentRenditionInfo();
-  auto text      = QString("%1 - %2x%3@%4")
-                  .arg(rendition->name)
-                  .arg(rendition->resolution.width)
-                  .arg(rendition->resolution.height)
-                  .arg(rendition->fps);
-  auto textSize = QFontMetrics(painter.font()).size(0, text);
+  auto renditions               = manifest->getRenditionInfos();
+  auto currentTargetRendition   = manifest->getCurrentRencodition();
+  auto currentPlaybackRendition = this->curFrame.segment->playbackInfo.rendition;
 
-  QRect textRect;
-  textRect.setSize(textSize);
-  textRect.moveTopLeft(QPoint(0, 0));
+  const auto arrawText     = "-->";
+  const auto arrowTextSize = QFontMetrics(painter.font()).size(0, arrawText);
+  QRect      arrowTextRect;
+  arrowTextRect.setSize(arrowTextSize);
+  arrowTextRect.setLeft(0);
 
-  painter.setPen(Qt::white);
-  painter.drawText(textRect, Qt::AlignLeft, text);
+  unsigned topPos = 0;
+  for (auto i = int(renditions.size() - 1); i >= 0; i--)
+  {
+    const auto &rendition = renditions.at(i);
+
+    if (i == currentPlaybackRendition)
+      painter.setPen(Qt::green);
+    else
+      painter.setPen(Qt::white);
+
+    if (i == currentTargetRendition)
+    {
+      arrowTextRect.moveTop(topPos);
+      painter.drawText(arrowTextRect, Qt::AlignLeft, arrawText);
+    }
+
+    auto text = QString("%1 - %2x%3@%4")
+                    .arg(rendition.name)
+                    .arg(rendition.resolution.width)
+                    .arg(rendition.resolution.height)
+                    .arg(rendition.fps);
+
+    auto textSize = QFontMetrics(painter.font()).size(0, text);
+
+    QRect textRect;
+    textRect.setSize(textSize);
+    textRect.moveLeft(arrowTextRect.width());
+    textRect.moveTop(topPos);
+
+    painter.drawText(textRect, Qt::AlignLeft, text);
+
+    topPos += textRect.height();
+  }
 }
 
 void ViewWidget::drawProgressGraph(QPainter &painter)

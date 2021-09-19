@@ -47,15 +47,14 @@ void PlaybackController::reset()
   this->conversion = std::make_unique<FrameConversionThread>(this->logger, &this->segmentBuffer);
   this->decoder    = std::make_unique<DecoderThread>(this->logger, &this->segmentBuffer);
 
-  this->manifestFile = std::make_unique<ManifestFile>(this->logger);
-
   this->logger->clearMessages();
   this->logger->addMessage("Playback Controller initialized", LoggingPriority::Info);
 }
 
 bool PlaybackController::openJsonManifestFile(QString jsonManifestFile)
 {
-  auto success = this->manifestFile->openJsonManifestFile(jsonManifestFile);
+  this->manifestFile = std::make_unique<ManifestFile>(this->logger);
+  auto success       = this->manifestFile->openJsonManifestFile(jsonManifestFile);
   if (success)
     this->downloader->activateManifest(this->manifestFile.get());
   return success;
@@ -63,7 +62,8 @@ bool PlaybackController::openJsonManifestFile(QString jsonManifestFile)
 
 bool PlaybackController::openPredefinedManifest(unsigned predefinedManifestID)
 {
-  auto success = this->manifestFile->openPredefinedManifest(predefinedManifestID);
+  this->manifestFile = std::make_unique<ManifestFile>(this->logger);
+  auto success       = this->manifestFile->openPredefinedManifest(predefinedManifestID);
   if (success)
     this->downloader->activateManifest(this->manifestFile.get());
   return success;
@@ -76,15 +76,9 @@ void PlaybackController::gotoSegment(unsigned segmentNumber)
   this->manifestFile->gotoSegment(segmentNumber);
 }
 
-void PlaybackController::increaseRendition()
-{
-  this->manifestFile->increaseRendition();
-}
+void PlaybackController::increaseRendition() { this->manifestFile->increaseRendition(); }
 
-void PlaybackController::decreaseRendition()
-{
-  this->manifestFile->decreaseRendition();
-}
+void PlaybackController::decreaseRendition() { this->manifestFile->decreaseRendition(); }
 
 QString PlaybackController::getStatus()
 {

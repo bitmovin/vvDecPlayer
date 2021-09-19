@@ -28,8 +28,8 @@ SOFTWARE. */
 #include <QDesktopServices>
 #include <QMainWindow>
 #include <QMouseEvent>
-#include <QSettings>
 #include <QPointer>
+#include <QSettings>
 
 #include "ui_MainWindows.h"
 #include <PlaybackController.h>
@@ -77,7 +77,6 @@ private:
   QAction                      actionShowProgressGraph;
   QScopedPointer<QActionGroup> actionGroup;
 
-  QPointer<QAction> fixedFileActions[1];
   QPointer<QAction> fixedURLActions[1];
 
   bool wasMaximizedBeforeFullScreen{false};

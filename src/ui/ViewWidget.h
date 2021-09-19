@@ -65,6 +65,7 @@ private:
   std::vector<ViewWidgetMessage> messages;
   std::mutex                     messagesMutex;
 
+  void drawCurrentFrame(QPainter &painter);
   void drawAndUpdateMessages(QPainter &painter);
   void drawFPSAndStatusText(QPainter &painter);
   void drawRenditionInfo(QPainter &painter);
@@ -88,7 +89,7 @@ private:
   unsigned frameSegmentOffset{};
   unsigned plotMaxBitrate{1000};
 
-  bool scaleVideo{false};
+  bool scaleVideo{true};
   bool showDebugInfo{false};
   bool showProgressGraph{false};
 };

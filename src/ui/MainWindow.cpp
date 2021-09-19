@@ -180,7 +180,7 @@ void MainWindow::createMenusAndActions()
                            nullptr,
                            viewMenu,
                            "&Scale Video",
-                           false,
+                           true,
                            &MainWindow::toggleScaleVideo,
                            Qt::CTRL | Qt::Key_S);
   configureCheckableAction(this->actionShowThreadStatus,
@@ -275,8 +275,10 @@ void MainWindow::openFixedUrl()
   {
     auto id = action->data().toInt();
     this->playbackController->openPredefinedManifest(id);
-    auto renditionInfo = this->playbackController->getManifest()->getCurrentRenditionInfo();
+    auto manifest = this->playbackController->getManifest();
+    auto renditionInfo = manifest->getCurrentRenditionInfo();
     this->ui.viewWidget->setPlaybackFps(renditionInfo->fps);
+    this->ui.viewWidget->setPlotMaxBitrate(manifest->getPlotMaxBitrate());
   }
 }
 

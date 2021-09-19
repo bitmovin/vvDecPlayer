@@ -39,9 +39,10 @@ public:
 
   bool openPredefinedManifest(unsigned predefinedManifestID);
 
-  void gotoSegment(unsigned segmentNumber) { this->currentSegment = segmentNumber; }
-  void increaseRendition();
-  void decreaseRendition();
+  void     gotoSegment(unsigned segmentNumber) { this->currentSegment = segmentNumber; }
+  void     increaseRendition();
+  void     decreaseRendition();
+  unsigned getCurrentRencodition() const { return this->currentRendition; }
 
   struct Rendition
   {
@@ -50,6 +51,7 @@ public:
     double  fps{};
     QString url;
   };
+  std::vector<Rendition>   getRenditionInfos() const { return this->renditions; }
   std::optional<Rendition> getCurrentRenditionInfo() const;
   unsigned                 getPlotMaxBitrate() const { return this->plotMaxBitrate; }
 
