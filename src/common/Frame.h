@@ -37,14 +37,23 @@ enum class FrameState
 
 struct Frame
 {
+  void clear()
+  {
+    this->frameState        = FrameState::Empty;
+    this->frameSize         = {};
+    this->pixelFormat       = {};
+    this->nrBytesCompressed = 0;
+    this->poc               = 0;
+  }
+
   FrameState frameState{FrameState::Empty};
 
   QByteArray                    rawYUVData;
-  Size                          frameSize;
-  YUV_Internals::YUVPixelFormat pixelFormat;
+  Size                          frameSize{};
+  YUV_Internals::YUVPixelFormat pixelFormat{};
 
-  size_t   nrBytesCompressed{};
-  unsigned poc{};
+  size_t   nrBytesCompressed{0};
+  unsigned poc{0};
 
   QImage rgbImage;
 };

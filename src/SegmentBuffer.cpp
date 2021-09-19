@@ -119,7 +119,15 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextDownloadSegment()
     return {};
   }
 
-  auto newSegment = std::make_shared<Segment>();
+  SegmentPtr newSegment;
+  if (this->segmentRecycleBin.empty())
+    newSegment = std::make_shared<Segment>();
+  else
+  {
+    newSegment = this->segmentRecycleBin.front();
+    this->segmentRecycleBin.pop();
+  }
+
   this->segments.push_back(newSegment);
   return newSegment;
 }
@@ -127,7 +135,16 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextDownloadSegment()
 SegmentBuffer::FramePt SegmentBuffer::addNewFrameToSegment(SegmentPtr segment)
 {
   std::shared_lock lk(this->segmentQueueMutex);
-  auto             newFrame = std::make_shared<Frame>();
+
+  FramePt newFrame;
+  if (this->frameRecycleBin.empty())
+    newFrame = std::make_shared<Frame>();
+  else
+  {
+    newFrame = this->frameRecycleBin.front();
+    this->frameRecycleBin.pop();
+  }
+
   segment->frames.push_back(newFrame);
   segment->nrFrames++;
   return newFrame;
@@ -338,6 +355,7 @@ SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator 
   {
     assert(frameIt.segment == this->segments.front());
     this->segments.pop_front();
+    this->recycleSegmentAndFrames(frameIt.segment);
     this->tryToStartNextDownload();
   }
 
@@ -348,7 +366,18 @@ SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator 
 
 void SegmentBuffer::tryToStartNextDownload()
 {
-  constexpr auto MAX_DOWNLOADED_SEGMENTS_IN_QUEUE = 6;
+  constexpr auto MAX_DOWNLOADED_SEGMENTS_IN_QUEUE = 5;
   if (this->segments.size() < MAX_DOWNLOADED_SEGMENTS_IN_QUEUE)
     emit startNextDownload();
+}
+
+void SegmentBuffer::recycleSegmentAndFrames(SegmentPtr segment)
+{
+  for (auto frameIt : segment->frames)
+  {
+    frameIt->clear();
+    this->frameRecycleBin.push(frameIt);
+  }
+  segment->clear();
+  this->segmentRecycleBin.push(segment);
 }

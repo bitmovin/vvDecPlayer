@@ -29,6 +29,7 @@ SOFTWARE. */
 #include <condition_variable>
 #include <deque>
 #include <iterator>
+#include <queue>
 #include <shared_mutex>
 
 /* The central storage for segments, frames and all their buffers
@@ -49,13 +50,6 @@ public:
   ~SegmentBuffer();
 
   void abort();
-
-  /* The deque idea does not work. When adding things to the queue all iterators are invalidated.
-   * New idea:
-   *   - We store shared pointers to Segments in the queue. For going to the next segment we then
-   *     have to search though the queue but it only has a few items.
-   *   - The FrameIterator can use the current interace using also shared pointers to the segment
-   */
 
   using FramePt      = std::shared_ptr<Frame>;
   using SegmentPtr   = std::shared_ptr<Segment>;
@@ -125,4 +119,8 @@ private:
   std::shared_mutex           segmentQueueMutex;
 
   bool aborted{false};
+
+  void                   recycleSegmentAndFrames(SegmentPtr segment);
+  std::queue<SegmentPtr> segmentRecycleBin;
+  std::queue<FramePt>    frameRecycleBin;
 };

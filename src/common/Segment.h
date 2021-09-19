@@ -31,6 +31,17 @@ SOFTWARE. */
 
 struct Segment
 {
+  void clear()
+  {
+    this->playbackInfo        = {};
+    this->compressedSizeBytes = 0;
+    this->downloadProgress    = 0.0;
+    this->downloadFinished    = false;
+    this->parsingFinished     = false;
+    this->nrFrames            = 0;
+    this->frames.clear();
+  }
+
   struct PlaybackInfo
   {
     unsigned segmentNumber{};
@@ -41,7 +52,7 @@ struct Segment
   PlaybackInfo playbackInfo{};
 
   QByteArray  compressedData;
-  std::size_t compressedSizeBytes{};
+  std::size_t compressedSizeBytes{0};
   bool        isLocalFile{};
 
   using Percent = double;
@@ -49,7 +60,7 @@ struct Segment
   bool    downloadFinished{false};
   bool    parsingFinished{false};
 
-  unsigned nrFrames{};
+  unsigned nrFrames{0};
 
   std::vector<std::shared_ptr<Frame>> frames;
 };
