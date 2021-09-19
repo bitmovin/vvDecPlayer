@@ -126,6 +126,7 @@ void DecoderThread::runDecoder()
 
           DEBUG("Retrived frame " << currentFrameIdxInSegment << " with size "
                                   << frame->frameSize.width << "x" << frame->frameSize.height);
+          this->segmentBuffer->onFrameDecoded();
           currentFrameIdxInSegment++;
         }
       }
