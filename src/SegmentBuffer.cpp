@@ -252,6 +252,12 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToDecode(SegmentPtr segme
   return getNextSegmentFromQueue(segmentPtr, this->segments);
 }
 
+void SegmentBuffer::onFrameDecoded()
+{
+  // Whenever a frame was decoded we can already convert it
+  this->eventCV.notify_all();
+}
+
 SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToConvert()
 {
   DEBUG("SegmentBuffer: Waiting for first frame to convert");

@@ -94,6 +94,7 @@ public:
   // decoded frames are already in the buffer)
   SegmentPtr getFirstSegmentToDecode();
   SegmentPtr getNextSegmentToDecode(SegmentPtr segment);
+  void       onFrameDecoded();
 
   // The converter will get frames to convert here (and may get blocked if there
   // are none)
