@@ -41,6 +41,23 @@ using namespace YUV_Internals;
 #endif
 #endif
 
+namespace
+{
+
+static unsigned char clp_buf[384 + 256 + 384];
+static bool          clp_buf_initialized = false;
+
+void initClippingTable()
+{
+  // Initialize clipping table. Because of the static bool, this will only be called once.
+  memset(clp_buf, 0, 384);
+  int i;
+  for (i = 0; i < 256; i++)
+    clp_buf[384 + i] = i;
+  memset(clp_buf + 384 + 256, 255, 384);
+  clp_buf_initialized = true;
+}
+
 inline int getValueFromSource(const unsigned char *restrict src,
                               const int                     idx,
                               const int                     bps,
@@ -491,11 +508,17 @@ inline void YUVPlaneToRGB_420(const int                     w,
 // NearestNeighborInterpolation. The chroma must be 0 in x direction and 1 in y direction. No
 // yuvMath is supported.
 // TODO: Correct the chroma subsampling offset.
+template <int bitDepth>
 bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
                         unsigned char *      targetBuffer,
                         const Size           size,
                         const YUVPixelFormat format)
 {
+  static_assert(bitDepth == 8 || bitDepth == 10);
+
+  typedef std::conditional<bitDepth == 8, uint8_t, uint16_t>::type InValueType;
+  const auto rightShift = (bitDepth == 8) ? 0 : 2;
+
   const auto frameWidth  = size.width;
   const auto frameHeight = size.height;
 
@@ -507,21 +530,9 @@ bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
   Q_ASSERT(sourceBuffer.size() >= componentLenghtY + componentLengthUV +
                                       componentLengthUV); // YUV 420 must be (at least) 1.5*Y-area
 
-  // Perform software based 420 to RGB conversion
-  static unsigned char  clp_buf[384 + 256 + 384];
-  static unsigned char *clip_buf            = clp_buf + 384;
-  static bool           clp_buf_initialized = false;
-
+  static unsigned char *clip_buf = clp_buf + 384;
   if (!clp_buf_initialized)
-  {
-    // Initialize clipping table. Because of the static bool, this will only be called once.
-    memset(clp_buf, 0, 384);
-    int i;
-    for (i = 0; i < 256; i++)
-      clp_buf[384 + i] = i;
-    memset(clp_buf + 384 + 256, 255, 384);
-    clp_buf_initialized = true;
-  }
+    initClippingTable();
 
   unsigned char *restrict dst = targetBuffer;
 
@@ -539,10 +550,10 @@ bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
   const bool uPplaneFirst =
       (format.getPlaneOrder() == PlaneOrder::YUV ||
        format.getPlaneOrder() == PlaneOrder::YUVA); // Is the U plane the first or the second?
-  const unsigned char *restrict srcY = (unsigned char *)sourceBuffer.data();
-  const unsigned char *restrict srcU =
+  const auto *restrict srcY = (InValueType *)sourceBuffer.data();
+  const auto *restrict srcU =
       uPplaneFirst ? srcY + componentLenghtY : srcY + componentLenghtY + componentLengthUV;
-  const unsigned char *restrict srcV =
+  const auto *restrict srcV =
       uPplaneFirst ? srcY + componentLenghtY + componentLengthUV : srcY + componentLenghtY;
 
   for (unsigned yh = 0; yh < frameHeight / 2; yh++)
@@ -560,14 +571,14 @@ bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
       // Process four pixels (the ones for which U/V are valid
 
       // Load UV and pre-multiply
-      const int U_tmp_G = ((int)srcU[srcAddrUV + xh] - cZero) * RGBConv[2];
-      const int U_tmp_B = ((int)srcU[srcAddrUV + xh] - cZero) * RGBConv[4];
-      const int V_tmp_R = ((int)srcV[srcAddrUV + xh] - cZero) * RGBConv[1];
-      const int V_tmp_G = ((int)srcV[srcAddrUV + xh] - cZero) * RGBConv[3];
+      const int U_tmp_G = (((int)srcU[srcAddrUV + xh] >> rightShift) - cZero) * RGBConv[2];
+      const int U_tmp_B = (((int)srcU[srcAddrUV + xh] >> rightShift) - cZero) * RGBConv[4];
+      const int V_tmp_R = (((int)srcV[srcAddrUV + xh] >> rightShift) - cZero) * RGBConv[1];
+      const int V_tmp_G = (((int)srcV[srcAddrUV + xh] >> rightShift) - cZero) * RGBConv[3];
 
       // Pixel top left
       {
-        const int Y_tmp = ((int)srcY[srcAddrY1 + x] - yOffset) * RGBConv[0];
+        const int Y_tmp = (((int)srcY[srcAddrY1 + x] >> rightShift) - yOffset) * RGBConv[0];
 
         const int R_tmp = (Y_tmp + V_tmp_R) >> 16;
         const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G) >> 16;
@@ -581,7 +592,7 @@ bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
       }
       // Pixel top right
       {
-        const int Y_tmp = ((int)srcY[srcAddrY1 + x + 1] - yOffset) * RGBConv[0];
+        const int Y_tmp = (((int)srcY[srcAddrY1 + x + 1] >> rightShift) - yOffset) * RGBConv[0];
 
         const int R_tmp = (Y_tmp + V_tmp_R) >> 16;
         const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G) >> 16;
@@ -595,7 +606,7 @@ bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
       }
       // Pixel bottom left
       {
-        const int Y_tmp = ((int)srcY[srcAddrY2 + x] - yOffset) * RGBConv[0];
+        const int Y_tmp = (((int)srcY[srcAddrY2 + x] >> rightShift) - yOffset) * RGBConv[0];
 
         const int R_tmp = (Y_tmp + V_tmp_R) >> 16;
         const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G) >> 16;
@@ -609,7 +620,7 @@ bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
       }
       // Pixel bottom right
       {
-        const int Y_tmp = ((int)srcY[srcAddrY2 + x + 1] - yOffset) * RGBConv[0];
+        const int Y_tmp = (((int)srcY[srcAddrY2 + x + 1] >> rightShift) - yOffset) * RGBConv[0];
 
         const int R_tmp = (Y_tmp + V_tmp_R) >> 16;
         const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G) >> 16;
@@ -736,6 +747,8 @@ bool convertYUVPlanarToRGB(const QByteArray &    sourceBuffer,
   return true;
 }
 
+} // namespace
+
 // Convert the given raw YUV data in sourceBuffer (using srcPixelFormat) to image (RGB-888), using
 // the buffer tmpRGBBuffer for intermediate RGB values.
 void convertYUVToImage(const QByteArray &    sourceBuffer,
@@ -779,13 +792,20 @@ void convertYUVToImage(const QByteArray &    sourceBuffer,
   const auto chromaInterpolation = ChromaInterpolation::NearestNeighbor;
   if (yuvFormat.isPlanar())
   {
-    if (yuvFormat.getBitsPerSample() == 8 && yuvFormat.getSubsampling() == Subsampling::YUV_420 &&
+    if ((yuvFormat.getBitsPerSample() == 8 || yuvFormat.getBitsPerSample() == 10) &&
+        yuvFormat.getSubsampling() == Subsampling::YUV_420 &&
         chromaInterpolation == ChromaInterpolation::NearestNeighbor &&
         yuvFormat.getChromaOffset().x == 0 && yuvFormat.getChromaOffset().y == 1 &&
         !yuvFormat.isUVInterleaved())
-      // 8 bit 4:2:0, nearest neighbor, chroma offset (0,1) (the default for 4:2:0), all components
-      // displayed and no yuv math. We can use a specialized function for this.
-      convOK = convertYUV420ToRGB(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat);
+    // 8 bit 4:2:0, nearest neighbor, chroma offset (0,1) (the default for 4:2:0), all components
+    // displayed and no yuv math. We can use a specialized function for this.
+    {
+      if (yuvFormat.getBitsPerSample() == 8)
+        convOK = convertYUV420ToRGB<8>(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat);
+      else if (yuvFormat.getBitsPerSample() == 10)
+        convOK = convertYUV420ToRGB<10>(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat);
+    }
+
     else
       convOK = convertYUVPlanarToRGB(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat);
   }
