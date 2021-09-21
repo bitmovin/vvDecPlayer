@@ -29,9 +29,8 @@ jobs:
       run: |
         brew install qt
       if: matrix.os == 'macos-10.15' || matrix.os == 'macos-11.0'
-    - name: Install Packages (Windows)
-      run: |
-        choco install qt-sdk
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v2
       if: matrix.os == 'windows-2019'
     - name: Build (Linux/mac)
       run: |
