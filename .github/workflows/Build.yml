@@ -47,5 +47,5 @@ jobs:
         cd build
         qmake ..
         nmake
-      if: matrix.os != 'windows-2019'
+      if: matrix.os == 'windows-2019'
     
