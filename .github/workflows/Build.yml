@@ -12,10 +12,10 @@ jobs:
     strategy:
       matrix:
         include: 
-          - os: ubuntu-18.04
-          - os: ubuntu-20.04
-          - os: macos-10.15
-          - os: macos-11.0
+          # - os: ubuntu-18.04
+          # - os: ubuntu-20.04
+          # - os: macos-10.15
+          # - os: macos-11.0
           - os: windows-2019
     steps:
     - uses: actions/checkout@v2
@@ -35,7 +35,6 @@ jobs:
       if: matrix.os == 'windows-2019'
     - name: Build (Linux/mac)
       run: |
-        cd $GITHUB_WORKSPACE
         mkdir build
         cd build
         qmake ..
@@ -43,7 +42,6 @@ jobs:
       if: matrix.os != 'windows-2019'
     - name: Build (Windows)
       run: |
-        cd $GITHUB_WORKSPACE
         mkdir build
         cd build
         qmake ..
