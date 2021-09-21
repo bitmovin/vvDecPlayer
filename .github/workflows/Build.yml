@@ -1,0 +1,52 @@
+name: CI build
+
+on:
+  push:
+  release:
+    types:
+      - created
+
+jobs:
+  build-unix:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include: 
+          - os: ubuntu-18.04
+          - os: ubuntu-20.04
+          - os: macos-10.15
+          - os: macos-11.0
+          - os: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+    - run: git fetch --prune --unshallow
+    - name: Install Packages (Ubuntu)
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgl1-mesa-dev libxkbcommon-x11-0 libpcre2-16-0 qt5-default
+      if: matrix.os == 'ubuntu-18.04' || matrix.os == 'ubuntu-20.04'
+    - name: Install Packages (Mac)
+      run: |
+        brew install qt
+      if: matrix.os == 'macos-10.15' || matrix.os == 'macos-11.0'
+    - name: Install Packages (Windows)
+      run: |
+        choco install qt
+      if: matrix.os == 'windows-2019'
+    - name: Build (Linux/mac)
+      run: |
+        cd $GITHUB_WORKSPACE
+        mkdir build
+        cd build
+        qmake ..
+        make -j 2
+      if: matrix.os != 'windows-2019'
+    - name: Build (Windows)
+      run: |
+        cd $GITHUB_WORKSPACE
+        mkdir build
+        cd build
+        qmake ..
+        nmake
+      if: matrix.os != 'windows-2019'
+    
