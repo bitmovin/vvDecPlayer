@@ -25,6 +25,8 @@ SOFTWARE. */
 
 #include "general_timing_hrd_parameters.h"
 
+#include <assert.h>
+
 namespace parser::vvc
 {
 
