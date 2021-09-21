@@ -19,6 +19,7 @@ jobs:
           - os: windows-2019
     steps:
     - uses: actions/checkout@v2
+    - uses: ilammy/msvc-dev-cmd@v1
     - run: git fetch --prune --unshallow
     - name: Install Packages (Ubuntu)
       run: |
@@ -41,7 +42,6 @@ jobs:
         make -j 2
       if: matrix.os != 'windows-2019'
     - name: Build (Windows)
-      uses: ilammy/msvc-dev-cmd@v1
       run: |
         cd $GITHUB_WORKSPACE
         mkdir build
