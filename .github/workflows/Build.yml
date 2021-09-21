@@ -41,6 +41,7 @@ jobs:
         make -j 2
       if: matrix.os != 'windows-2019'
     - name: Build (Windows)
+      uses: ilammy/msvc-dev-cmd@v1
       run: |
         cd $GITHUB_WORKSPACE
         mkdir build
