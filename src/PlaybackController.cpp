@@ -25,6 +25,7 @@ SOFTWARE. */
 
 #include <QDebug>
 #include <decoder/decoderVVDec.h>
+#include <assert.h>
 
 PlaybackController::PlaybackController(ILogger *logger) : logger(logger)
 {

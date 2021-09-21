@@ -23,6 +23,8 @@ SOFTWARE. */
 
 #include "SegmentBuffer.h"
 
+#include <assert.h>
+
 #define DEBUG_SEGMENT_BUFFER 0
 #if DEBUG_SEGMENT_BUFFER
 #include <QDebug>

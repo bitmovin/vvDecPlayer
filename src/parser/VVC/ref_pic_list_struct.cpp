@@ -26,6 +26,8 @@ SOFTWARE. */
 #include "parser/common/functions.h"
 #include "seq_parameter_set_rbsp.h"
 
+#include <assert.h>
+
 namespace parser::vvc
 {
 

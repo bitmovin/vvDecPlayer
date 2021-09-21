@@ -23,6 +23,8 @@ SOFTWARE. */
 
 #include "YUVConversion.h"
 
+#include <assert.h>
+
 using namespace YUV_Internals;
 
 // Restrict is basically a promise to the compiler that for the scope of the pointer, the target of
