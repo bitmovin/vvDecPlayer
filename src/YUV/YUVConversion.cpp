@@ -23,6 +23,8 @@ SOFTWARE. */
 
 #include "YUVConversion.h"
 
+#include <assert.h>
+
 using namespace YUV_Internals;
 
 // Restrict is basically a promise to the compiler that for the scope of the pointer, the target of
@@ -516,8 +518,8 @@ bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
 {
   static_assert(bitDepth == 8 || bitDepth == 10);
 
-  typedef std::conditional<bitDepth == 8, uint8_t, uint16_t>::type InValueType;
-  const auto rightShift = (bitDepth == 8) ? 0 : 2;
+  typedef typename std::conditional<bitDepth == 8, uint8_t, uint16_t>::type InValueType;
+  constexpr auto rightShift = (bitDepth == 8) ? 0 : 2;
 
   const auto frameWidth  = size.width;
   const auto frameHeight = size.height;
@@ -550,7 +552,7 @@ bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
   const bool uPplaneFirst =
       (format.getPlaneOrder() == PlaneOrder::YUV ||
        format.getPlaneOrder() == PlaneOrder::YUVA); // Is the U plane the first or the second?
-  const auto *restrict srcY = (InValueType *)sourceBuffer.data();
+  const auto *restrict srcY = (InValueType*)sourceBuffer.data();
   const auto *restrict srcU =
       uPplaneFirst ? srcY + componentLenghtY : srcY + componentLenghtY + componentLengthUV;
   const auto *restrict srcV =

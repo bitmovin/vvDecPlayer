@@ -2,7 +2,7 @@ QT += core gui widgets opengl xml concurrent network
 
 TARGET = vvDecPlayer
 TEMPLATE = app
-CONFIG += c++17
+CONFIG += c++1z
 CONFIG -= debug_and_release
 
 SOURCES += $$files(src/*.cpp, true)

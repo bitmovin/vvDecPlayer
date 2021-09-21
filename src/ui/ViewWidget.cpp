@@ -27,6 +27,7 @@ SOFTWARE. */
 #include <QPalette>
 #include <QRectF>
 #include <QTimerEvent>
+#include <assert.h>
 
 #define DEBUG_WIDGET 0
 #if DEBUG_WIDGET

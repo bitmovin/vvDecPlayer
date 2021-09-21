@@ -25,6 +25,7 @@ SOFTWARE. */
 
 #include <iomanip>
 #include <sstream>
+#include <assert.h>
 
 namespace parser::reader
 {
