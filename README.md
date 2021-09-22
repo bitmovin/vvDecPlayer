@@ -13,7 +13,7 @@ This is a POC player for VVC that can playback segmented VVC streams from a loca
 The only requirement for building this player is Qt. For running it, you will also require the [Fraunhofer Versatile Video Decoder (VVdeC)
 ](https://github.com/fraunhoferhhi/vvdec) library. 
 
-We build using qmake so it depends a bit on what os you build
+We build using qmake so it depends a bit on what os you build on. A good reference is the [Github Actions YML](.github\workflows\Build.yml) file where we build on Ubuntu/Windows/MacOs.
 
 ### Linux / macOS
 
@@ -33,4 +33,48 @@ qmake ..
 nmake
 ```
 
+## JSON Manifest Files
 
+The player will need to know what to play from what source. For this we use a small JSON based manifest file that describes where all the VVC segments can be downloaded. Here is an example. 
+
+📝 Try it out! Save this to a JSON file and open it.
+
+```
+{
+  "Name": "Sintel Bitmovin S3",
+  "NrSegments": 53,
+  "PlotMaxBitrate": 400000,
+  "Renditions": [
+    {
+      "Name": "360p",
+      "Resolution": "640x360",
+      "Fps": 24,
+      "Url": "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/SintelTrailer1080p/360-200000/segment-%i.vvc"
+    },
+    {
+      "Name": "576p",
+      "Resolution": "1024x576",
+      "Fps": 24,
+      "Url": "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/SintelTrailer1080p/576-400000/segment-%i.vvc"
+    },
+    {
+      "Name": "720p",
+      "Resolution": "1280x720",
+      "Fps": 24,
+	  "Url": "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/SintelTrailer1080p/720-750000/segment-%i.vvc"
+    },
+    {
+      "Name": "1080p",
+      "Resolution": "1920x1080",
+      "Fps": 24,
+      
+	  "Url": "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/SintelTrailer1080p/1080-1500000/segment-%i.vvc"
+    }
+  ]
+}
+```
+
+Some notes: 
+ - `NrSegments`: The segment index will iterate from 0 to `NrSegments - 1`
+ - `PlotMaxBitrate`: This value is just used to scale the bitrate plot which you can activate in the player. It has no immediate influence on playback.
+ - `Url`: For each rendition a URL must be provided where the file can be downloaded from. This can be a link (starting with `http` or `https`) or it can be a path on the local filesystem. It must contain a `%i` indicator which will be replaced by the segment index.
