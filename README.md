@@ -11,7 +11,7 @@ This is a POC player for VVC that can playback segmented VVC streams from a loca
 ## How to build
 
 The only requirement for building this player is Qt. For running it, you will also require the [Fraunhofer Versatile Video Decoder (VVdeC)
-](https://github.com/fraunhoferhhi/vvdec) library. 
+](https://github.com/fraunhoferhhi/vvdec) library. You can get precompiled libraries [here](https://github.com/ChristianFeldmann/vvdec/releases).
 
 We build using qmake so it depends a bit on what os you build on. A good reference is the [Github Actions YML](.github/workflows/Build.yml) file where we build on Ubuntu/Windows/MacOs.
 
