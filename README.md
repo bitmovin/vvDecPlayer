@@ -33,6 +33,19 @@ qmake ..
 nmake
 ```
 
+## Keyboard shortcuts
+
+There are a bunch of keyboard shortcuts to make your life easier. Most of them can also be accessed through the menu.
+
+ - `Up/Down`: Switch to the next higher / lower rendition
+ - `Space`: Pause/Resume playback
+ - `Right`: Go to the next frame when paused
+ - `Ctrl+F`: Toggle full screen
+ - `Ctrl+G`: Jump to segment number
+ - `Ctrl+S`: Toggle scaling of video to the window size
+ - `Ctrl+D`: Show thread debug ingo
+ - `Ctrl+P`: Show graph debug info
+
 ## JSON Manifest Files
 
 The player will need to know what to play from what source. For this we use a small JSON based manifest file that describes where all the VVC segments can be downloaded. Here is an example. 
