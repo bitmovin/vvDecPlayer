@@ -37,6 +37,7 @@ class adaptation_parameter_set_rbsp;
 using VPSMap = std::map<unsigned, std::shared_ptr<vvc::video_parameter_set_rbsp>>;
 using SPSMap = std::map<unsigned, std::shared_ptr<vvc::seq_parameter_set_rbsp>>;
 using PPSMap = std::map<unsigned, std::shared_ptr<vvc::pic_parameter_set_rbsp>>;
-using APSMap = std::map<unsigned, std::shared_ptr<vvc::adaptation_parameter_set_rbsp>>;
+using APSMap =
+    std::map<std::pair<unsigned, unsigned>, std::shared_ptr<vvc::adaptation_parameter_set_rbsp>>;
 
 } // namespace parser::vvc
