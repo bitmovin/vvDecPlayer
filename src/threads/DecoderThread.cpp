@@ -69,14 +69,17 @@ void DecoderThread::runDecoder()
 {
   this->logger->addMessage("Started decoder thread", LoggingPriority::Info);
 
-  size_t currentDataOffset{};
-  auto   segmentIt = this->segmentBuffer->getFirstSegmentToDecode();
+  size_t   currentDataOffset        = 0;
+  unsigned currentFrameIdxInSegment = 0;
+  auto     itSegmentData            = this->segmentBuffer->getFirstSegmentToDecode();
+  std::queue<SegmentBuffer::SegmentPtr> nextSegmentFrames;
+  nextSegmentFrames.push(itSegmentData);
 
   while (!this->decoderAbort)
   {
-    const auto &data = segmentIt->compressedData;
+    const auto &data                     = itSegmentData->compressedData;
+    bool        resetDecoderAfterSegment = false;
 
-    unsigned currentFrameIdxInSegment = 0;
     if (auto firstPos = findNextNalInData(data, 0))
       currentDataOffset = *firstPos;
     while (!this->decoderAbort)
@@ -98,11 +101,53 @@ void DecoderThread::runDecoder()
           currentDataOffset = data.size();
         }
 
-        DEBUG("Pushing " << nalData.size() << " bytes");
-        if (!this->decoder->pushData(nalData))
+        if (nalData.isEmpty())
         {
-          this->logger->addMessage("Error pushing data", LoggingPriority::Error);
-          break;
+          DEBUG("No more data. Will continue with next segment.");
+
+          // This may block until another segment to decode is available
+          this->statusText = "Waiting";
+          auto nextSegment = this->segmentBuffer->getNextSegmentToDecode(itSegmentData);
+          this->statusText = "Decoding";
+
+          if (!nextSegment)
+          {
+            this->logger->addMessage("Got no next semgent.", LoggingPriority::Error);
+            DEBUG("Got no next segment. Exit decoder thread.");
+            return;
+          }
+
+          DEBUG(QString("Got next segment Rendition %1 Segment %2")
+                    .arg(nextSegment->playbackInfo.rendition)
+                    .arg(nextSegment->playbackInfo.segmentNumber));
+
+          auto renditionSwitch =
+              nextSegment->playbackInfo.rendition != itSegmentData->playbackInfo.rendition;
+
+          itSegmentData = nextSegment;
+          nextSegmentFrames.push(nextSegment);
+
+          if (renditionSwitch)
+          {
+            resetDecoderAfterSegment = true;
+            DEBUG("Pushing empty data (EOF)");
+            if (!this->decoder->pushData(nalData))
+            {
+              this->logger->addMessage("Error pushing empty data (EOF)", LoggingPriority::Error);
+              break;
+            }
+          }
+          else
+            break;
+        }
+        else
+        {
+          DEBUG("Pushing " << nalData.size() << " bytes");
+          if (!this->decoder->pushData(nalData))
+          {
+            this->logger->addMessage("Error pushing data", LoggingPriority::Error);
+            break;
+          }
         }
       }
 
@@ -111,21 +156,44 @@ void DecoderThread::runDecoder()
         DEBUG("Checking for next frame ");
         if (this->decoder->decodeNextFrame())
         {
-          if (currentFrameIdxInSegment >= segmentIt->frames.size())
+          auto itSegmentFrames = nextSegmentFrames.front();
+          if (currentFrameIdxInSegment >= itSegmentFrames->frames.size())
           {
-            this->logger->addMessage(QString("Error putting frame %1 into buffer. Frame not found.")
-                                         .arg(currentFrameIdxInSegment),
-                                     LoggingPriority::Error);
+            nextSegmentFrames.pop();
+            if (nextSegmentFrames.empty())
+            {
+              this->logger->addMessage(
+                  QString(
+                      "Error putting frame %1 into buffer. Got more frames then there should be.")
+                      .arg(currentFrameIdxInSegment),
+                  LoggingPriority::Error);
+              break;
+            }
+            else
+            {
+              itSegmentFrames          = nextSegmentFrames.front();
+              currentFrameIdxInSegment = 0;
+              if (itSegmentFrames->frames.empty())
+              {
+                this->logger->addMessage(QString("Next segment has no frames"),
+                                         LoggingPriority::Error);
+                break;
+              }
+            }
           }
 
-          auto frame         = segmentIt->frames.at(currentFrameIdxInSegment);
+          auto frame         = itSegmentFrames->frames.at(currentFrameIdxInSegment);
           frame->rawYUVData  = this->decoder->getRawFrameData();
           frame->pixelFormat = this->decoder->getYUVPixelFormat();
           frame->frameSize   = this->decoder->getFrameSize();
           frame->frameState  = FrameState::Decoded;
 
-          DEBUG("Retrived frame " << currentFrameIdxInSegment << " with size "
-                                  << frame->frameSize.width << "x" << frame->frameSize.height);
+          DEBUG(QString("Saving frame (%1x%2) into frame idx %3 segment %4 rendition %5")
+                    .arg(frame->frameSize.width)
+                    .arg(frame->frameSize.height)
+                    .arg(currentFrameIdxInSegment)
+                    .arg(itSegmentFrames->playbackInfo.segmentNumber)
+                    .arg(itSegmentFrames->playbackInfo.rendition));
           this->segmentBuffer->onFrameDecoded();
           currentFrameIdxInSegment++;
         }
@@ -135,8 +203,8 @@ void DecoderThread::runDecoder()
       {
         DEBUG("Decoding error");
         this->logger->addMessage(QString("Error decoding rend %1 seg %2 frame %3")
-                                     .arg(segmentIt->playbackInfo.rendition)
-                                     .arg(segmentIt->playbackInfo.segmentNumber)
+                                     .arg(itSegmentData->playbackInfo.rendition)
+                                     .arg(itSegmentData->playbackInfo.segmentNumber)
                                      .arg(currentFrameIdxInSegment),
                                  LoggingPriority::Error);
         break;
@@ -152,12 +220,11 @@ void DecoderThread::runDecoder()
     if (this->decoderAbort)
       return;
 
-    // This may block until the decoder can decode another segment
-    this->statusText = "Waiting";
-    segmentIt        = this->segmentBuffer->getNextSegmentToDecode(segmentIt);
-    this->statusText = "Decoding";
-
-    DEBUG("Reset decoder");
-    this->decoder->resetDecoder();
+    DEBUG("Start decoding of next segment");
+    if (resetDecoderAfterSegment)
+    {
+      DEBUG("Reset decoder");
+      this->decoder->resetDecoder();
+    }
   }
 }

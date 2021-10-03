@@ -40,9 +40,10 @@ SOFTWARE. */
 namespace
 {
 
-constexpr auto INFO_MESSAGE_TIMEOUT = std::chrono::seconds(10);
+constexpr auto    INFO_MESSAGE_TIMEOUT        = std::chrono::seconds(10);
+static const auto SEMGENT_LENGTH_FRAMES_GUESS = 24u;
 
-}
+} // namespace
 
 ViewWidget::ViewWidget(QWidget *parent) : QWidget(parent)
 {
@@ -273,11 +274,18 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
 
     auto segmentLeft = firstSegmentLeft;
 
+    auto firstSegmentNrFrames = SEMGENT_LENGTH_FRAMES_GUESS;
+    if (bufferState.size() > 0 && bufferState[0].nrFrames > 0)
+      firstSegmentNrFrames = bufferState[0].nrFrames;
+
     painter.setPen(Qt::NoPen);
     for (auto &segment : bufferState)
     {
-      segmentRect.setWidth(segment.nrFrames * frameRect.width() +
-                           (segment.nrFrames - 1) * spaceBetweenFrames +
+      auto nrFrames = segment.nrFrames;
+      if (nrFrames == 0)
+        nrFrames = firstSegmentNrFrames;
+
+      segmentRect.setWidth(nrFrames * frameRect.width() + (nrFrames - 1) * spaceBetweenFrames +
                            segmentBoxBoarder.width() * 2);
       segmentRect.moveLeft(segmentLeft);
 
@@ -290,8 +298,8 @@ void ViewWidget::drawProgressGraph(QPainter &painter)
         auto       absHeight    = segment.sizeInBytes * 8 * maxBoxHeight / this->plotMaxBitrate;
 
         QRectF bitrateBarRect;
-        bitrateBarRect.setWidth(segment.nrFrames * frameRect.width() +
-                                (segment.nrFrames - 1) * spaceBetweenFrames +
+
+        bitrateBarRect.setWidth(nrFrames * frameRect.width() + (nrFrames - 1) * spaceBetweenFrames +
                                 segmentBoxBoarder.width() * 2);
         bitrateBarRect.moveLeft(segmentLeft);
         bitrateBarRect.setHeight(absHeight * segment.downloadProgress / 100);
