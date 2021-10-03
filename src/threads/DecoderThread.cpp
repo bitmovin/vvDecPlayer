@@ -121,16 +121,15 @@ void DecoderThread::runDecoder()
                     .arg(nextSegment->playbackInfo.rendition)
                     .arg(nextSegment->playbackInfo.segmentNumber));
 
-          if (nextSegment->playbackInfo.rendition != itSegmentData->playbackInfo.rendition)
-            resetDecoderAfterSegment = true;
-          if (nextSegment->playbackInfo.segmentNumber == 0)
-            resetDecoderAfterSegment = true;
+          auto renditionSwitch =
+              nextSegment->playbackInfo.rendition != itSegmentData->playbackInfo.rendition;
 
           itSegmentData = nextSegment;
           nextSegmentFrames.push(nextSegment);
 
-          if (resetDecoderAfterSegment)
+          if (renditionSwitch)
           {
+            resetDecoderAfterSegment = true;
             DEBUG("Pushing empty data (EOF)");
             if (!this->decoder->pushData(nalData))
             {
