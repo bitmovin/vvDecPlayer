@@ -138,7 +138,7 @@ std::optional<AnnexB::SeekData> AnnexBVVC::getSeekData(int iFrameNr)
 
         for (const auto &nalMap : {activeVPSNal, activeSPSNal, activePPSNal})
         {
-          for (auto const &entry : nalMap)
+          for (const auto &entry : nalMap)
             seekData.parameterSets.push_back(entry.second->rawData);
         }
         for (const auto &aps : activeAPSNal)
@@ -165,7 +165,7 @@ std::optional<AnnexB::SeekData> AnnexBVVC::getSeekData(int iFrameNr)
     if (nal->header.nal_unit_type == NalType::PREFIX_APS_NUT ||
         nal->header.nal_unit_type == NalType::SUFFIX_APS_NUT)
     {
-      auto aps = std::dynamic_pointer_cast<adaptation_parameter_set_rbsp>(nal->rbsp);
+      auto aps     = std::dynamic_pointer_cast<adaptation_parameter_set_rbsp>(nal->rbsp);
       auto apsType = apsParamTypeMapper.indexOf(aps->aps_params_type);
       activeAPSNal[{apsType, aps->aps_adaptation_parameter_set_id}] = nal;
     }
@@ -264,10 +264,10 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
   try
   {
     nalVVC->header.parse(reader);
+    specificDescription = " " + NalTypeMapper.getName(nalVVC->header.nal_unit_type);
 
     if (nalVVC->header.nal_unit_type == NalType::VPS_NUT)
     {
-      specificDescription = " VPS";
       auto newVPS         = std::make_shared<video_parameter_set_rbsp>();
       newVPS->parse(reader);
 
@@ -281,7 +281,6 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     }
     else if (nalVVC->header.nal_unit_type == NalType::SPS_NUT)
     {
-      specificDescription = " SPS";
       auto newSPS         = std::make_shared<seq_parameter_set_rbsp>();
       newSPS->parse(reader);
 
@@ -295,7 +294,6 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     }
     else if (nalVVC->header.nal_unit_type == NalType::PPS_NUT)
     {
-      specificDescription = " PPS";
       auto newPPS         = std::make_shared<pic_parameter_set_rbsp>();
       newPPS->parse(reader, this->activeParameterSets.spsMap);
 
@@ -310,7 +308,6 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     else if (nalVVC->header.nal_unit_type == NalType::PREFIX_APS_NUT ||
              nalVVC->header.nal_unit_type == NalType::SUFFIX_APS_NUT)
     {
-      specificDescription = " APS";
       auto newAPS         = std::make_shared<adaptation_parameter_set_rbsp>();
       newAPS->parse(reader);
 
@@ -325,7 +322,6 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     }
     else if (nalVVC->header.nal_unit_type == NalType::PH_NUT)
     {
-      specificDescription   = " Picture Header";
       auto newPictureHeader = std::make_shared<picture_header_rbsp>();
       newPictureHeader->parse(reader,
                               this->activeParameterSets.vpsMap,
@@ -337,11 +333,14 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
           nalVVC->header.nal_unit_type,
           this->activeParameterSets.spsMap,
           this->activeParameterSets.ppsMap,
-          updatedParsingState.currentPictureHeaderStructure);
+          updatedParsingState.currentPictureHeaderStructure,
+          this->parsingState.NoOutputBeforeRecoveryFlag);
+
+      this->parsingState.NoOutputBeforeRecoveryFlag = false;
 
       if (updatedParsingState.currentPictureHeaderStructure)
         updatedParsingState.lastFramePOC =
-            updatedParsingState.currentPictureHeaderStructure->PicOrderCntVal;
+            int(updatedParsingState.currentPictureHeaderStructure->PicOrderCntVal);
 
       updatedParsingState.currentPictureHeaderStructure =
           newPictureHeader->picture_header_structure_instance;
@@ -354,7 +353,7 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     }
     else if (nalVVC->header.isSlice())
     {
-      specificDescription = " Slice Header";
+      specificDescription += " (Slice Header)";
       auto newSliceLayer  = std::make_shared<slice_layer_rbsp>();
       newSliceLayer->parse(reader,
                            nalVVC->header.nal_unit_type,
@@ -371,11 +370,15 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
                                          nalVVC->header.nal_unit_type,
                                          this->activeParameterSets.spsMap,
                                          this->activeParameterSets.ppsMap,
-                                         updatedParsingState.currentPictureHeaderStructure);
+                                         updatedParsingState.currentPictureHeaderStructure,
+                                         this->parsingState.NoOutputBeforeRecoveryFlag);
+        
+        this->parsingState.NoOutputBeforeRecoveryFlag = false;
+
         updatedParsingState.currentPictureHeaderStructure =
             newSliceLayer->slice_header_instance.picture_header_structure_instance;
         updatedParsingState.lastFramePOC =
-            updatedParsingState.currentPictureHeaderStructure->PicOrderCntVal;
+            (updatedParsingState.currentPictureHeaderStructure->PicOrderCntVal);
       }
       else
       {
@@ -395,30 +398,24 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     }
     else if (nalVVC->header.nal_unit_type == NalType::AUD_NUT)
     {
-      specificDescription = " AUD";
     }
     else if (nalVVC->header.nal_unit_type == NalType::DCI_NUT)
     {
-      specificDescription = " DCI";
       auto newDCI         = std::make_shared<decoding_capability_information_rbsp>();
       newDCI->parse(reader);
       nalVVC->rbsp = newDCI;
     }
     else if (nalVVC->header.nal_unit_type == NalType::EOB_NUT)
     {
-      specificDescription = " EOB";
     }
     else if (nalVVC->header.nal_unit_type == NalType::EOS_NUT)
     {
-      specificDescription = " EOS";
     }
     else if (nalVVC->header.nal_unit_type == NalType::FD_NUT)
     {
-      specificDescription = " Filler Data";
     }
-    else if (nalVVC->header.nal_unit_type == NalType::FD_NUT)
+    else if (nalVVC->header.nal_unit_type == NalType::OPI_NUT)
     {
-      specificDescription = " OPI";
       auto newOPI         = std::make_shared<operating_point_information_rbsp>();
       newOPI->parse(reader);
       nalVVC->rbsp = newOPI;
@@ -426,7 +423,6 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     else if (nalVVC->header.nal_unit_type == NalType::SUFFIX_SEI_NUT ||
              nalVVC->header.nal_unit_type == NalType::PREFIX_APS_NUT)
     {
-      specificDescription = " SEI";
     }
   }
   catch (const std::exception &e)
