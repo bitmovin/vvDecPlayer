@@ -63,7 +63,20 @@ FileDownloader::FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer)
       this, &FileDownloader::downloadFinished, segmentBuffer, &SegmentBuffer::onDownloadFinished);
 }
 
-QString FileDownloader::getStatus() const { return this->statusText; }
+QString FileDownloader::getStatus() const
+{
+  switch (this->state)
+  {
+  case State::Idle:
+    return "Idle";
+  case State::DownloadSegment:
+    return "Download Segment";
+  case State::DownloadHighestResolutionSPS:
+    return "Download SPS";
+  default:
+    return "";
+  }
+}
 
 void FileDownloader::replyFinished(QNetworkReply *reply)
 {
@@ -76,14 +89,28 @@ void FileDownloader::replyFinished(QNetworkReply *reply)
     return;
   }
 
-  this->currentSegment->compressedData      = reply->readAll();
-  this->currentSegment->downloadProgress    = 100.0;
-  this->currentSegment->downloadFinished    = true;
-  this->currentSegment->compressedSizeBytes = this->currentSegment->compressedData.size();
+  if (this->state == State::Idle)
+  {
+    DEBUG("Error - We got a reply but are in idle state");
+    this->logger->addMessage("Got not requested download response", LoggingPriority::Error);
+    return;
+  }
+
+  if (this->state == State::DownloadHighestResolutionSPS)
+  {
+    // TODO
+  }
+  else
+  {
+    this->currentSegment->compressedData      = reply->readAll();
+    this->currentSegment->downloadProgress    = 100.0;
+    this->currentSegment->downloadFinished    = true;
+    this->currentSegment->compressedSizeBytes = this->currentSegment->compressedData.size();
+  }
 
   emit downloadFinished();
 
-  this->statusText = "Waiting";
+  this->state = State::Idle;
 }
 
 void FileDownloader::updateDownloadProgress(int64_t val, int64_t max)
@@ -102,18 +129,38 @@ void FileDownloader::updateDownloadProgress(int64_t val, int64_t max)
 
 void FileDownloader::activateManifest(ManifestFile *manifestFile)
 {
+  if (!manifestFile)
+    return;
+
   this->manifestFile = manifestFile;
-  this->downloadNextFile();
+  if (manifestFile->isopenGopAdaptiveResolutionChange())
+    this->downloadFile(FileType::HighestRepresentationSPS);
+  else
+    this->downloadFile(FileType::NextSegment);
 }
 
-void FileDownloader::downloadNextFile()
+void FileDownloader::downloadNextFile() { this->downloadFile(FileType::NextSegment); }
+
+void FileDownloader::downloadFile(FileType fileType)
 {
   QNetworkAccessManager networkManager;
 
-  auto segmentInfo = this->manifestFile->getNextSegment();
+  if (this->state != State::Idle)
+  {
+    DEBUG("Error - A download is already running");
+    this->logger->addMessage("A download is already running", LoggingPriority::Error);
+    return;
+  }
 
-  this->currentSegment               = segmentBuffer->getNextDownloadSegment();
-  this->currentSegment->playbackInfo = segmentInfo;
+  auto segmentInfo = fileType == FileType::NextSegment
+                         ? this->manifestFile->getNextSegment()
+                         : this->manifestFile->getSegmentSPSHighestRendition();
+
+  if (fileType == FileType::NextSegment)
+  {
+    this->currentSegment               = segmentBuffer->getNextDownloadSegment();
+    this->currentSegment->playbackInfo = segmentInfo;
+  }
 
   auto url = segmentInfo.downloadUrl;
   if (isURLLocalFile(url))
@@ -125,10 +172,13 @@ void FileDownloader::downloadNextFile()
     {
       // For local files the download finishes immediately
       DEBUG("Loading local file " << url);
-      this->currentSegment->compressedData      = inputFile.readAll();
-      this->currentSegment->downloadProgress    = 100.0;
-      this->currentSegment->downloadFinished    = true;
-      this->currentSegment->compressedSizeBytes = this->currentSegment->compressedData.size();
+      if (fileType == FileType::NextSegment)
+      {
+        this->currentSegment->compressedData      = inputFile.readAll();
+        this->currentSegment->downloadProgress    = 100.0;
+        this->currentSegment->downloadFinished    = true;
+        this->currentSegment->compressedSizeBytes = this->currentSegment->compressedData.size();
+      }
       emit downloadFinished();
     }
   }
@@ -139,6 +189,7 @@ void FileDownloader::downloadNextFile()
     QNetworkRequest request(url);
     QNetworkReply * reply = this->networkManager.get(request);
     connect(reply, &QNetworkReply::downloadProgress, this, &FileDownloader::updateDownloadProgress);
-    this->statusText = "Download";
+    this->state = fileType == FileType::NextSegment ? State::DownloadSegment
+                                                    : State::DownloadHighestResolutionSPS;
   }
 }

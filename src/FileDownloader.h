@@ -70,11 +70,24 @@ private:
   SegmentBuffer *segmentBuffer{};
   ManifestFile * manifestFile{};
 
+  enum class State
+  {
+    Idle,
+    DownloadSegment,
+    DownloadHighestResolutionSPS
+  };
+  State state{State::Idle};
+
+  enum class FileType
+  {
+    NextSegment,
+    HighestRepresentationSPS
+  };
+  void downloadFile(FileType fileType);
+
   SegmentBuffer::SegmentPtr currentSegment;
 
   bool isLocalSource{false};
-
-  QString statusText;
 
   QNetworkAccessManager networkManager;
 };
