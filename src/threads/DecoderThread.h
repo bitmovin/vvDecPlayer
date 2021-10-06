@@ -30,15 +30,21 @@ SOFTWARE. */
 #include <condition_variable>
 #include <optional>
 #include <thread>
+#include <QObject>
 
-class DecoderThread
+class DecoderThread : public QObject
 {
+Q_OBJECT
+
 public:
   DecoderThread(ILogger *logger, SegmentBuffer *segmentBuffer);
   ~DecoderThread();
   void abort();
 
   QString getStatus() const;
+
+public slots:
+  void onDownloadOfFirstSPSSegmentFinished(QByteArray segmentData);
 
 private:
   ILogger *      logger{};
@@ -50,6 +56,8 @@ private:
 
   std::thread decoderThread;
   bool        decoderAbort{false};
+
+  QByteArray highestRenditionSPS;
 
   QString statusText;
 };

@@ -33,9 +33,12 @@ SOFTWARE. */
 #include <threads/FrameConversionThread.h>
 
 #include <QDir>
+#include <QObject>
 
-class PlaybackController
+class PlaybackController : public QObject
 {
+Q_OBJECT
+
 public:
   PlaybackController(ILogger *logger);
   ~PlaybackController();

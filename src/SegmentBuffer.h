@@ -109,7 +109,7 @@ signals:
   void startNextDownload();
 
 public slots:
-  void onDownloadFinished();
+  void onDownloadOfSegmentFinished();
 
 private:
   void tryToStartNextDownload();

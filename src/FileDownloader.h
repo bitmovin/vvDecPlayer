@@ -57,9 +57,10 @@ public:
   QString getStatus() const;
 
 signals:
-  void downloadFinished();
+  void downloadOfSegmentFinished();
+  void downloadOfFirstSPSSegmentFinished(QByteArray segmentData);
 
-private slots:
+public slots:
   void downloadNextFile();
 
   void replyFinished(QNetworkReply *reply);

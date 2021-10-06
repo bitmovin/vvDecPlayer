@@ -56,11 +56,6 @@ FileDownloader::FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer)
           &QNetworkAccessManager::finished,
           this,
           &FileDownloader::replyFinished);
-
-  connect(
-      segmentBuffer, &SegmentBuffer::startNextDownload, this, &FileDownloader::downloadNextFile);
-  connect(
-      this, &FileDownloader::downloadFinished, segmentBuffer, &SegmentBuffer::onDownloadFinished);
 }
 
 QString FileDownloader::getStatus() const
@@ -96,19 +91,19 @@ void FileDownloader::replyFinished(QNetworkReply *reply)
     return;
   }
 
-  if (this->state == State::DownloadHighestResolutionSPS)
-  {
-    // TODO
-  }
-  else
+  if (this->state == State::DownloadSegment)
   {
     this->currentSegment->compressedData      = reply->readAll();
     this->currentSegment->downloadProgress    = 100.0;
     this->currentSegment->downloadFinished    = true;
     this->currentSegment->compressedSizeBytes = this->currentSegment->compressedData.size();
+    emit downloadOfSegmentFinished();
   }
-
-  emit downloadFinished();
+  else
+  {
+    emit downloadOfFirstSPSSegmentFinished(reply->readAll());
+    this->downloadNextFile();
+  }
 
   this->state = State::Idle;
 }
@@ -178,8 +173,13 @@ void FileDownloader::downloadFile(FileType fileType)
         this->currentSegment->downloadProgress    = 100.0;
         this->currentSegment->downloadFinished    = true;
         this->currentSegment->compressedSizeBytes = this->currentSegment->compressedData.size();
+        emit downloadOfSegmentFinished();
       }
-      emit downloadFinished();
+      else
+      {
+        emit downloadOfFirstSPSSegmentFinished(inputFile.readAll());
+        this->downloadNextFile();
+      }
     }
   }
   else

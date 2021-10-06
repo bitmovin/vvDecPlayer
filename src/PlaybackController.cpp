@@ -24,8 +24,8 @@ SOFTWARE. */
 #include "PlaybackController.h"
 
 #include <QDebug>
-#include <decoder/decoderVVDec.h>
 #include <assert.h>
+#include <decoder/decoderVVDec.h>
 
 PlaybackController::PlaybackController(ILogger *logger) : logger(logger)
 {
@@ -47,6 +47,19 @@ void PlaybackController::reset()
   this->parser     = std::make_unique<FileParserThread>(this->logger, &this->segmentBuffer);
   this->conversion = std::make_unique<FrameConversionThread>(this->logger, &this->segmentBuffer);
   this->decoder    = std::make_unique<DecoderThread>(this->logger, &this->segmentBuffer);
+
+  connect(&this->segmentBuffer,
+          &SegmentBuffer::startNextDownload,
+          this->downloader.get(),
+          &FileDownloader::downloadNextFile);
+  connect(this->downloader.get(),
+          &FileDownloader::downloadOfSegmentFinished,
+          &this->segmentBuffer,
+          &SegmentBuffer::onDownloadOfSegmentFinished);
+  connect(this->downloader.get(),
+          &FileDownloader::downloadOfFirstSPSSegmentFinished,
+          this->decoder.get(),
+          &DecoderThread::onDownloadOfFirstSPSSegmentFinished);
 
   this->logger->clearMessages();
   this->logger->addMessage("Playback Controller initialized", LoggingPriority::Info);

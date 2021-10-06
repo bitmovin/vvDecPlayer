@@ -152,7 +152,7 @@ SegmentBuffer::FramePt SegmentBuffer::addNewFrameToSegment(SegmentPtr segment)
   return newFrame;
 }
 
-void SegmentBuffer::onDownloadFinished()
+void SegmentBuffer::onDownloadOfSegmentFinished()
 {
   this->eventCV.notify_all();
   this->tryToStartNextDownload();

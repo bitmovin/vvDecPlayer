@@ -25,6 +25,8 @@ SOFTWARE. */
 
 #include <common/functions.h>
 #include <decoder/decoderVVDec.h>
+#include <parser/VVC/nal_unit_header.h>
+#include <parser/common/SubByteReaderLogging.h>
 
 #include <QDebug>
 #include <chrono>
@@ -36,6 +38,30 @@ SOFTWARE. */
 #else
 #define DEBUG(f) ((void)0)
 #endif
+
+namespace
+{
+
+bool isSPSNAL(QByteArray nalData)
+{
+  auto data = convertToByteVector(nalData);
+
+  // Skip the NAL unit header
+  int readOffset = 0;
+  if (data.size() > 3 && data.at(0) == (char)0 && data.at(1) == (char)0 && data.at(2) == (char)1)
+    readOffset = 3;
+  else if (data.size() > 4 && data.at(0) == (char)0 && data.at(1) == (char)0 &&
+           data.at(2) == (char)0 && data.at(3) == (char)1)
+    readOffset = 4;
+
+  parser::reader::SubByteReaderLogging reader(data, {}, "", readOffset);
+  parser::vvc::nal_unit_header         header;
+  header.parse(reader);
+
+  return header.nal_unit_type == parser::vvc::NalType::SPS_NUT;
+}
+
+} // namespace
 
 DecoderThread::DecoderThread(ILogger *logger, SegmentBuffer *segmentBuffer)
     : logger(logger), segmentBuffer(segmentBuffer)
@@ -63,6 +89,43 @@ void DecoderThread::abort() { this->decoderAbort = true; }
 QString DecoderThread::getStatus() const
 {
   return (this->decoderAbort ? "Abort " : "") + this->statusText;
+}
+
+void DecoderThread::onDownloadOfFirstSPSSegmentFinished(QByteArray segmentData)
+{
+  auto startPos = findNextNalInData(segmentData, 0);
+  if (!startPos)
+  {
+    this->logger->addMessage("SPS could not be extracted from highest rendition",
+                             LoggingPriority::Error);
+    return;
+  }
+
+  size_t currentDataOffset = *startPos;
+  while (currentDataOffset < segmentData.size())
+  {
+    QByteArray nalData;
+    if (auto nextNalStart = findNextNalInData(segmentData, currentDataOffset + 3))
+    {
+      auto length       = *nextNalStart - currentDataOffset;
+      nalData           = segmentData.mid(currentDataOffset, length);
+      currentDataOffset = *nextNalStart;
+    }
+    else if (currentDataOffset < size_t(segmentData.size()))
+    {
+      nalData           = segmentData.mid(currentDataOffset);
+      currentDataOffset = segmentData.size();
+    }
+
+    if (isSPSNAL(nalData))
+    {
+      this->highestRenditionSPS = nalData;
+      return;
+    }
+  }
+
+  this->logger->addMessage("SPS could not be extracted from highest rendition",
+                             LoggingPriority::Error);
 }
 
 void DecoderThread::runDecoder()
