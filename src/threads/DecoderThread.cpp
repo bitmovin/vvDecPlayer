@@ -205,6 +205,12 @@ void DecoderThread::runDecoder()
         }
         else
         {
+          if (!this->highestRenditionSPS.isEmpty() && isSPSNAL(nalData))
+          {
+            DEBUG("Replace SPS with SPS from highest rendition");
+            nalData = this->highestRenditionSPS;
+          }
+
           DEBUG("Pushing " << nalData.size() << " bytes");
           if (!this->decoder->pushData(nalData))
           {
