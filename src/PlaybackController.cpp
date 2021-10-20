@@ -70,7 +70,11 @@ bool PlaybackController::openJsonManifestFile(QString jsonManifestFile)
   this->manifestFile = std::make_unique<ManifestFile>(this->logger);
   auto success       = this->manifestFile->openJsonManifestFile(jsonManifestFile);
   if (success)
+  {
     this->downloader->activateManifest(this->manifestFile.get());
+    this->decoder->setOpenGopAdaptiveResolutionChange(
+        this->manifestFile->isopenGopAdaptiveResolutionChange());
+  }
   return success;
 }
 
@@ -79,7 +83,11 @@ bool PlaybackController::openPredefinedManifest(unsigned predefinedManifestID)
   this->manifestFile = std::make_unique<ManifestFile>(this->logger);
   auto success       = this->manifestFile->openPredefinedManifest(predefinedManifestID);
   if (success)
+  {
     this->downloader->activateManifest(this->manifestFile.get());
+    this->decoder->setOpenGopAdaptiveResolutionChange(
+        this->manifestFile->isopenGopAdaptiveResolutionChange());
+  }
   return success;
 }
 

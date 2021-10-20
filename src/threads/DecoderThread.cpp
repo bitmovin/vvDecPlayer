@@ -86,6 +86,11 @@ DecoderThread::~DecoderThread()
 
 void DecoderThread::abort() { this->decoderAbort = true; }
 
+void DecoderThread::setOpenGopAdaptiveResolutionChange(bool adaptiveResolutioChange)
+{
+  this->adaptiveResolutioChange = adaptiveResolutioChange;
+}
+
 QString DecoderThread::getStatus() const
 {
   return (this->decoderAbort ? "Abort " : "") + this->statusText;
@@ -102,7 +107,7 @@ void DecoderThread::onDownloadOfFirstSPSSegmentFinished(QByteArray segmentData)
   }
 
   size_t currentDataOffset = *startPos;
-  while (currentDataOffset < segmentData.size())
+  while (currentDataOffset < size_t(segmentData.size()))
   {
     QByteArray nalData;
     if (auto nextNalStart = findNextNalInData(segmentData, currentDataOffset + 3))
@@ -125,7 +130,7 @@ void DecoderThread::onDownloadOfFirstSPSSegmentFinished(QByteArray segmentData)
   }
 
   this->logger->addMessage("SPS could not be extracted from highest rendition",
-                             LoggingPriority::Error);
+                           LoggingPriority::Error);
 }
 
 void DecoderThread::runDecoder()
@@ -190,7 +195,7 @@ void DecoderThread::runDecoder()
           itSegmentData = nextSegment;
           nextSegmentFrames.push(nextSegment);
 
-          if (renditionSwitch)
+          if (renditionSwitch && !this->adaptiveResolutioChange)
           {
             resetDecoderAfterSegment = true;
             DEBUG("Pushing empty data (EOF)");

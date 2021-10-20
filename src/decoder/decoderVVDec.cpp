@@ -370,17 +370,12 @@ bool decoderVVDec::getNextFrameFromDecoder()
       DEBUG_vvdec("decoderVVDec::getNextFrameFromDecoder plane has different size then expected");
   }
 
-  if (!this->frameSize.isValid() && !this->formatYUV.isValid())
-  {
-    // Set the values
-    this->frameSize = lumaSize;
+  this->frameSize = lumaSize;
+  if (!this->formatYUV.isValid())
     this->formatYUV = YUV_Internals::YUVPixelFormat(subsampling, bitDepth);
-  }
   else
   {
     // Check the values against the previously set values
-    if (this->frameSize != lumaSize)
-      return setErrorB("Received a frame of different size");
     if (this->formatYUV.getSubsampling() != subsampling)
       return setErrorB("Received a frame with different subsampling");
     if (unsigned(this->formatYUV.getBitsPerSample()) != bitDepth)
