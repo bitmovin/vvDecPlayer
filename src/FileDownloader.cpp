@@ -97,15 +97,15 @@ void FileDownloader::replyFinished(QNetworkReply *reply)
     this->currentSegment->downloadProgress    = 100.0;
     this->currentSegment->downloadFinished    = true;
     this->currentSegment->compressedSizeBytes = this->currentSegment->compressedData.size();
+    this->state = State::Idle;
     emit downloadOfSegmentFinished();
   }
   else
   {
+    this->state = State::Idle;
     emit downloadOfFirstSPSSegmentFinished(reply->readAll());
     this->downloadNextFile();
   }
-
-  this->state = State::Idle;
 }
 
 void FileDownloader::updateDownloadProgress(int64_t val, int64_t max)

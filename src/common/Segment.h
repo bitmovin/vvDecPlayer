@@ -29,8 +29,12 @@ SOFTWARE. */
 #include <QString>
 #include <memory>
 
-struct Segment
+class Segment
 {
+public:
+  Segment() = default;
+  ~Segment() = default;
+
   void clear()
   {
     this->playbackInfo        = {};
@@ -62,5 +66,5 @@ struct Segment
 
   unsigned nrFrames{0};
 
-  std::vector<std::shared_ptr<Frame>> frames;
+  std::vector<std::unique_ptr<Frame>> frames;
 };

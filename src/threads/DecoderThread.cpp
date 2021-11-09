@@ -137,10 +137,10 @@ void DecoderThread::runDecoder()
 {
   this->logger->addMessage("Started decoder thread", LoggingPriority::Info);
 
-  size_t   currentDataOffset        = 0;
-  unsigned currentFrameIdxInSegment = 0;
-  auto     itSegmentData            = this->segmentBuffer->getFirstSegmentToDecode();
-  std::queue<SegmentBuffer::SegmentPtr> nextSegmentFrames;
+  size_t                currentDataOffset        = 0;
+  unsigned              currentFrameIdxInSegment = 0;
+  auto                  itSegmentData            = this->segmentBuffer->getFirstSegmentToDecode();
+  std::queue<Segment *> nextSegmentFrames;
   nextSegmentFrames.push(itSegmentData);
 
   while (!this->decoderAbort)
@@ -256,7 +256,7 @@ void DecoderThread::runDecoder()
             }
           }
 
-          auto frame         = itSegmentFrames->frames.at(currentFrameIdxInSegment);
+          auto &frame       = itSegmentFrames->frames.at(currentFrameIdxInSegment);
           frame->rawYUVData  = this->decoder->getRawFrameData();
           frame->pixelFormat = this->decoder->getYUVPixelFormat();
           frame->frameSize   = this->decoder->getFrameSize();

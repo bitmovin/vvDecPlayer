@@ -86,7 +86,7 @@ private:
   };
   void downloadFile(FileType fileType);
 
-  SegmentBuffer::SegmentPtr currentSegment;
+  Segment *currentSegment{};
 
   bool isLocalSource{false};
 

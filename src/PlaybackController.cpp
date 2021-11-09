@@ -38,30 +38,41 @@ PlaybackController::~PlaybackController()
   this->decoder->abort();
   this->parser->abort();
   this->conversion->abort();
-  this->segmentBuffer.abort();
+  this->segmentBuffer->abort();
 }
 
 void PlaybackController::reset()
 {
-  this->downloader = std::make_unique<FileDownloader>(this->logger, &this->segmentBuffer);
-  this->parser     = std::make_unique<FileParserThread>(this->logger, &this->segmentBuffer);
-  this->conversion = std::make_unique<FrameConversionThread>(this->logger, &this->segmentBuffer);
-  this->decoder    = std::make_unique<DecoderThread>(this->logger, &this->segmentBuffer);
+  if (this->segmentBuffer)
+    this->segmentBuffer->abort();
+  this->downloader.reset(nullptr);
+  this->parser.reset(nullptr);
+  this->conversion.reset(nullptr);
+  this->decoder.reset(nullptr);
+  this->segmentBuffer.reset(nullptr);
 
-  connect(&this->segmentBuffer,
+  this->logger->clearMessages();
+
+  this->segmentBuffer = std::make_unique<SegmentBuffer>();
+  this->downloader    = std::make_unique<FileDownloader>(this->logger, this->segmentBuffer.get());
+  this->parser        = std::make_unique<FileParserThread>(this->logger, this->segmentBuffer.get());
+  this->conversion =
+      std::make_unique<FrameConversionThread>(this->logger, this->segmentBuffer.get());
+  this->decoder = std::make_unique<DecoderThread>(this->logger, this->segmentBuffer.get());
+
+  connect(this->segmentBuffer.get(),
           &SegmentBuffer::startNextDownload,
           this->downloader.get(),
           &FileDownloader::downloadNextFile);
   connect(this->downloader.get(),
           &FileDownloader::downloadOfSegmentFinished,
-          &this->segmentBuffer,
+          this->segmentBuffer.get(),
           &SegmentBuffer::onDownloadOfSegmentFinished);
   connect(this->downloader.get(),
           &FileDownloader::downloadOfFirstSPSSegmentFinished,
           this->decoder.get(),
           &DecoderThread::onDownloadOfFirstSPSSegmentFinished);
 
-  this->logger->clearMessages();
   this->logger->addMessage("Playback Controller initialized", LoggingPriority::Info);
 }
 

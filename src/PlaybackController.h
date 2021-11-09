@@ -37,7 +37,7 @@ SOFTWARE. */
 
 class PlaybackController : public QObject
 {
-Q_OBJECT
+  Q_OBJECT
 
 public:
   PlaybackController(ILogger *logger);
@@ -55,7 +55,7 @@ public:
   QString getStatus();
   auto    getLastSegmentsData() -> std::deque<SegmentData>;
 
-  SegmentBuffer *getSegmentBuffer() { return &this->segmentBuffer; }
+  SegmentBuffer *getSegmentBuffer() { return this->segmentBuffer.get(); }
   ManifestFile * getManifest() { return this->manifestFile.get(); }
 
 private:
@@ -65,8 +65,7 @@ private:
   std::unique_ptr<DecoderThread>         decoder;
   std::unique_ptr<FileParserThread>      parser;
   std::unique_ptr<FrameConversionThread> conversion;
+  std::unique_ptr<SegmentBuffer>         segmentBuffer;
 
   std::unique_ptr<ManifestFile> manifestFile;
-
-  SegmentBuffer segmentBuffer;
 };
