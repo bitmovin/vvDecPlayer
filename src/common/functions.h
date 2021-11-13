@@ -28,5 +28,19 @@ SOFTWARE. */
 #include <optional>
 #include <QByteArray>
 
+namespace functions
+{
+
 std::optional<std::size_t> findNextNalInData(const QByteArray &data, std::size_t start);
 ByteVector convertToByteVector(QByteArray data);
+
+template<typename T>
+unsigned clipToUnsigned(T val)
+{
+  static_assert(std::is_signed<T>::value, "T must must be a signed type");
+  if (val < 0)
+    return 0;
+  return unsigned(val);
+}
+
+}

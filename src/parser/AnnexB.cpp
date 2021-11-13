@@ -23,7 +23,7 @@ SOFTWARE. */
 
 #include "AnnexB.h"
 
-#include "parser/common/SubByteReaderLogging.h"
+#include <parser/common/SubByteReaderLogging.h>
 
 #include <QElapsedTimer>
 #include <QProgressDialog>

@@ -37,7 +37,7 @@ void decoderBase::resetDecoder()
   this->decoderState = DecoderState::NeedsMoreData;
   this->frameSize    = {};
   this->formatYUV    = {};
-  this->rawFormat    = RawFormat::Invalid;
+  this->rawFormat    = video::RawFormat::Invalid;
 }
 
 void decoderBaseSingleLib::loadDecoderLibrary(QString specificLibrary)

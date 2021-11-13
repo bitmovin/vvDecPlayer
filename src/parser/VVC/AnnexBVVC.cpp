@@ -63,38 +63,38 @@ Size AnnexBVVC::getSequenceSizeSamples() const
   return {};
 }
 
-YUVPixelFormat AnnexBVVC::getPixelFormat() const
+video::yuv::PixelFormatYUV AnnexBVVC::getPixelFormat() const
 {
   // Get the subsampling and bit-depth from the sps
   int  bitDepthY   = -1;
   int  bitDepthC   = -1;
-  auto subsampling = Subsampling::UNKNOWN;
+  auto subsampling = video::yuv::Subsampling::UNKNOWN;
   for (const auto &nal : this->nalUnitsForSeeking)
   {
     if (nal->header.nal_unit_type == vvc::NalType::SPS_NUT)
     {
       auto sps = std::dynamic_pointer_cast<seq_parameter_set_rbsp>(nal->rbsp);
       if (sps->sps_chroma_format_idc == 0)
-        subsampling = Subsampling::YUV_400;
+        subsampling = video::yuv::Subsampling::YUV_400;
       else if (sps->sps_chroma_format_idc == 1)
-        subsampling = Subsampling::YUV_420;
+        subsampling = video::yuv::Subsampling::YUV_420;
       else if (sps->sps_chroma_format_idc == 2)
-        subsampling = Subsampling::YUV_422;
+        subsampling = video::yuv::Subsampling::YUV_422;
       else if (sps->sps_chroma_format_idc == 3)
-        subsampling = Subsampling::YUV_444;
+        subsampling = video::yuv::Subsampling::YUV_444;
 
       bitDepthY = sps->sps_bitdepth_minus8 + 8;
       bitDepthC = sps->sps_bitdepth_minus8 + 8;
     }
 
-    if (bitDepthY != -1 && bitDepthC != -1 && subsampling != Subsampling::UNKNOWN)
+    if (bitDepthY != -1 && bitDepthC != -1 && subsampling != video::yuv::Subsampling::UNKNOWN)
     {
       if (bitDepthY != bitDepthC)
       {
         // Different luma and chroma bit depths currently not supported
         return {};
       }
-      return YUVPixelFormat(subsampling, bitDepthY);
+      return video::yuv::PixelFormatYUV(subsampling, bitDepthY);
     }
   }
 
@@ -268,7 +268,7 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
 
     if (nalVVC->header.nal_unit_type == NalType::VPS_NUT)
     {
-      auto newVPS         = std::make_shared<video_parameter_set_rbsp>();
+      auto newVPS = std::make_shared<video_parameter_set_rbsp>();
       newVPS->parse(reader);
 
       this->activeParameterSets.vpsMap[newVPS->vps_video_parameter_set_id] = newVPS;
@@ -281,7 +281,7 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     }
     else if (nalVVC->header.nal_unit_type == NalType::SPS_NUT)
     {
-      auto newSPS         = std::make_shared<seq_parameter_set_rbsp>();
+      auto newSPS = std::make_shared<seq_parameter_set_rbsp>();
       newSPS->parse(reader);
 
       this->activeParameterSets.spsMap[newSPS->sps_seq_parameter_set_id] = newSPS;
@@ -294,7 +294,7 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     }
     else if (nalVVC->header.nal_unit_type == NalType::PPS_NUT)
     {
-      auto newPPS         = std::make_shared<pic_parameter_set_rbsp>();
+      auto newPPS = std::make_shared<pic_parameter_set_rbsp>();
       newPPS->parse(reader, this->activeParameterSets.spsMap);
 
       this->activeParameterSets.ppsMap[newPPS->pps_pic_parameter_set_id] = newPPS;
@@ -308,7 +308,7 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     else if (nalVVC->header.nal_unit_type == NalType::PREFIX_APS_NUT ||
              nalVVC->header.nal_unit_type == NalType::SUFFIX_APS_NUT)
     {
-      auto newAPS         = std::make_shared<adaptation_parameter_set_rbsp>();
+      auto newAPS = std::make_shared<adaptation_parameter_set_rbsp>();
       newAPS->parse(reader);
 
       auto apsType = apsParamTypeMapper.indexOf(newAPS->aps_params_type);
@@ -354,7 +354,7 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     else if (nalVVC->header.isSlice())
     {
       specificDescription += " (Slice Header)";
-      auto newSliceLayer  = std::make_shared<slice_layer_rbsp>();
+      auto newSliceLayer = std::make_shared<slice_layer_rbsp>();
       newSliceLayer->parse(reader,
                            nalVVC->header.nal_unit_type,
                            this->activeParameterSets.vpsMap,
@@ -372,7 +372,7 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
                                          this->activeParameterSets.ppsMap,
                                          updatedParsingState.currentPictureHeaderStructure,
                                          this->parsingState.NoOutputBeforeRecoveryFlag);
-        
+
         this->parsingState.NoOutputBeforeRecoveryFlag = false;
 
         updatedParsingState.currentPictureHeaderStructure =
@@ -401,7 +401,7 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     }
     else if (nalVVC->header.nal_unit_type == NalType::DCI_NUT)
     {
-      auto newDCI         = std::make_shared<decoding_capability_information_rbsp>();
+      auto newDCI = std::make_shared<decoding_capability_information_rbsp>();
       newDCI->parse(reader);
       nalVVC->rbsp = newDCI;
     }
@@ -416,7 +416,7 @@ AnnexB::ParseResult AnnexBVVC::parseAndAddNALUnit(int                         na
     }
     else if (nalVVC->header.nal_unit_type == NalType::OPI_NUT)
     {
-      auto newOPI         = std::make_shared<operating_point_information_rbsp>();
+      auto newOPI = std::make_shared<operating_point_information_rbsp>();
       newOPI->parse(reader);
       nalVVC->rbsp = newOPI;
     }

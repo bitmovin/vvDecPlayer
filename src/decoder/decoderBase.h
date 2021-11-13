@@ -23,10 +23,11 @@ SOFTWARE. */
 
 #pragma once
 
-#include "rgbPixelFormat.h"
-#include <YUV/YUVPixelFormat.h>
 #include <common/EnumMapper.h>
 #include <common/typedef.h>
+#include <video/PixelFormat.h>
+#include <video/PixelFormatRGB.h>
+#include <video/PixelFormatYUV.h>
 
 #include <QLibrary>
 
@@ -78,12 +79,12 @@ public:
   // If the current frame is valid, the current frame can be retrieved using getRawFrameData.
   // Call decodeNextFrame to advance to the next frame. When the function returns false, more data
   // is probably needed.
-  virtual bool                  decodeNextFrame() = 0;
-  virtual QByteArray            getRawFrameData() = 0;
-  RawFormat                     getRawFormat() const { return this->rawFormat; }
-  YUV_Internals::YUVPixelFormat getYUVPixelFormat() const { return this->formatYUV; }
-  RGB_Internals::rgbPixelFormat getRGBPixelFormat() const { return this->formatRGB; }
-  Size                          getFrameSize() const { return this->frameSize; }
+  virtual bool               decodeNextFrame() = 0;
+  virtual QByteArray         getRawFrameData() = 0;
+  video::RawFormat           getRawFormat() const { return this->rawFormat; }
+  video::yuv::PixelFormatYUV getPixelFormatYUV() const { return this->formatYUV; }
+  video::rgb::PixelFormatRGB getPixelFormatRGB() const { return this->formatRGB; }
+  Size                       getFrameSize() const { return this->frameSize; }
   // Push data to the decoder (until no more data is needed)
   // In order to make the interface generic, the pushData function accepts data only without start
   // codes
@@ -114,9 +115,9 @@ protected:
   Size frameSize;
 
   // Some decoders are able to handel both YUV and RGB output
-  RawFormat                     rawFormat;
-  YUV_Internals::YUVPixelFormat formatYUV;
-  RGB_Internals::rgbPixelFormat formatRGB;
+  video::RawFormat           rawFormat;
+  video::yuv::PixelFormatYUV formatYUV;
+  video::rgb::PixelFormatRGB formatRGB;
 
   // Error handling
   void setError(const QString &reason)

@@ -28,7 +28,7 @@ SOFTWARE. */
 #include <QSettings>
 #include <cstring>
 
-#include "common/typedef.h"
+#include <common/typedef.h>
 
 // Debug the decoder ( 0:off 1:interactive deocder only 2:caching decoder only 3:both)
 #define decoderVVDec_DEBUG_OUTPUT 0
@@ -76,18 +76,18 @@ void loggingCallback(void *ptr, int level, const char *msg, va_list list)
 #endif
 }
 
-YUV_Internals::Subsampling convertFromInternalSubsampling(vvdecColorFormat fmt)
+video::yuv::Subsampling convertFromInternalSubsampling(vvdecColorFormat fmt)
 {
   if (fmt == VVDEC_CF_YUV400_PLANAR)
-    return YUV_Internals::Subsampling::YUV_400;
+    return video::yuv::Subsampling::YUV_400;
   if (fmt == VVDEC_CF_YUV420_PLANAR)
-    return YUV_Internals::Subsampling::YUV_420;
+    return video::yuv::Subsampling::YUV_420;
   if (fmt == VVDEC_CF_YUV422_PLANAR)
-    return YUV_Internals::Subsampling::YUV_422;
+    return video::yuv::Subsampling::YUV_422;
   if (fmt == VVDEC_CF_YUV444_PLANAR)
-    return YUV_Internals::Subsampling::YUV_444;
+    return video::yuv::Subsampling::YUV_444;
 
-  return YUV_Internals::Subsampling::UNKNOWN;
+  return video::yuv::Subsampling::UNKNOWN;
 }
 
 Size calculateChromaSize(Size lumaSize, vvdecColorFormat fmt)
@@ -108,13 +108,13 @@ Size calculateChromaSize(Size lumaSize, vvdecColorFormat fmt)
 
 decoderVVDec::decoderVVDec() : decoderBaseSingleLib()
 {
-  this->rawFormat = RawFormat::YUV;
+  this->rawFormat = video::RawFormat::YUV;
   this->loadLibrary();
 }
 
 decoderVVDec::decoderVVDec(bool loadLibrary) : decoderBaseSingleLib()
 {
-  this->rawFormat = RawFormat::YUV;
+  this->rawFormat = video::RawFormat::YUV;
   if (loadLibrary)
     this->loadLibrary();
 }
@@ -346,7 +346,7 @@ bool decoderVVDec::getNextFrameFromDecoder()
   if (!lumaSize.isValid())
     DEBUG_vvdec("decoderVVDec::getNextFrameFromDecoder got invalid size");
   auto subsampling = convertFromInternalSubsampling(this->currentFrame->colorFormat);
-  if (subsampling == YUV_Internals::Subsampling::UNKNOWN)
+  if (subsampling == video::yuv::Subsampling::UNKNOWN)
     DEBUG_vvdec("decoderVVDec::getNextFrameFromDecoder got invalid chroma format");
   auto bitDepth = this->currentFrame->bitDepth;
   if (bitDepth < 8 || bitDepth > 16)
@@ -364,7 +364,7 @@ bool decoderVVDec::getNextFrameFromDecoder()
 
   this->frameSize = lumaSize;
   if (!this->formatYUV.isValid())
-    this->formatYUV = YUV_Internals::YUVPixelFormat(subsampling, bitDepth);
+    this->formatYUV = video::yuv::PixelFormatYUV(subsampling, bitDepth);
   else
   {
     // Check the values against the previously set values

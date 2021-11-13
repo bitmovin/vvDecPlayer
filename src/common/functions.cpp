@@ -23,10 +23,13 @@ SOFTWARE. */
 
 #include "functions.h"
 
+namespace functions
+{
+
 std::optional<std::size_t> findNextNalInData(const QByteArray &data, std::size_t start)
 {
   auto START_CODE = QByteArrayLiteral("\x00\x00\x01");
-  
+
   if (start >= size_t(data.size()))
     return {};
   auto newStart = data.indexOf(START_CODE, start);
@@ -42,3 +45,5 @@ ByteVector convertToByteVector(QByteArray data)
   auto d = data.data();
   return ByteVector(d, d + data.size());
 }
+
+} // namespace functions

@@ -44,7 +44,7 @@ namespace
 
 bool isSPSNAL(QByteArray nalData)
 {
-  auto data = convertToByteVector(nalData);
+  auto data = functions::convertToByteVector(nalData);
 
   // Skip the NAL unit header
   int readOffset = 0;
@@ -98,7 +98,7 @@ QString DecoderThread::getStatus() const
 
 void DecoderThread::onDownloadOfFirstSPSSegmentFinished(QByteArray segmentData)
 {
-  auto startPos = findNextNalInData(segmentData, 0);
+  auto startPos = functions::findNextNalInData(segmentData, 0);
   if (!startPos)
   {
     this->logger->addMessage("SPS could not be extracted from highest rendition",
@@ -110,7 +110,7 @@ void DecoderThread::onDownloadOfFirstSPSSegmentFinished(QByteArray segmentData)
   while (currentDataOffset < size_t(segmentData.size()))
   {
     QByteArray nalData;
-    if (auto nextNalStart = findNextNalInData(segmentData, currentDataOffset + 3))
+    if (auto nextNalStart = functions::findNextNalInData(segmentData, currentDataOffset + 3))
     {
       auto length       = *nextNalStart - currentDataOffset;
       nalData           = segmentData.mid(currentDataOffset, length);
@@ -148,7 +148,7 @@ void DecoderThread::runDecoder()
     const auto &data                     = itSegmentData->compressedData;
     bool        resetDecoderAfterSegment = false;
 
-    if (auto firstPos = findNextNalInData(data, 0))
+    if (auto firstPos = functions::findNextNalInData(data, 0))
       currentDataOffset = *firstPos;
     while (!this->decoderAbort)
     {
@@ -157,7 +157,7 @@ void DecoderThread::runDecoder()
       if (state == decoder::DecoderState::NeedsMoreData)
       {
         QByteArray nalData;
-        if (auto nextNalStart = findNextNalInData(data, currentDataOffset + 3))
+        if (auto nextNalStart = functions::findNextNalInData(data, currentDataOffset + 3))
         {
           auto length       = *nextNalStart - currentDataOffset;
           nalData           = data.mid(currentDataOffset, length);
@@ -258,7 +258,7 @@ void DecoderThread::runDecoder()
 
           auto &frame       = itSegmentFrames->frames.at(currentFrameIdxInSegment);
           frame->rawYUVData  = this->decoder->getRawFrameData();
-          frame->pixelFormat = this->decoder->getYUVPixelFormat();
+          frame->pixelFormat = this->decoder->getPixelFormatYUV();
           frame->frameSize   = this->decoder->getFrameSize();
           frame->frameState  = FrameState::Decoded;
 

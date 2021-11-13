@@ -23,13 +23,18 @@ SOFTWARE. */
 
 #pragma once
 
-#include "YUVPixelFormat.h"
+#include "PixelFormatYUV.h"
 
 #include <QByteArray>
 #include <QImage>
 
+namespace video::yuv
+{
+
 // Convert from YUV (which ever format is selected) to image (RGB-888)
-void convertYUVToImage(const QByteArray &                   sourceBuffer,
-                       QImage &                             outputImage,
-                       const YUV_Internals::YUVPixelFormat &yuvFormat,
-                       const Size &                         curFrameSize);
+void convertYUVToImage(const QByteArray &    sourceBuffer,
+                       QImage &              outputImage,
+                       const PixelFormatYUV &yuvFormat,
+                       const Size &          curFrameSize);
+
+} // namespace video::yuv

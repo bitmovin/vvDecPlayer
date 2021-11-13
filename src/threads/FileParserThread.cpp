@@ -71,7 +71,7 @@ void FileParserThread::runParser()
     parser::AnnexBVVC parser;
 
     int nalID = 0;
-    if (auto firstPos = findNextNalInData(data, 0))
+    if (auto firstPos = functions::findNextNalInData(data, 0))
       currentDataOffset = *firstPos;
     bool isLastNalInData = false;
     while (!this->parserAbort)
@@ -80,7 +80,7 @@ void FileParserThread::runParser()
 
       if (!isLastNalInData)
       {
-        if (auto nextNalStart = findNextNalInData(data, currentDataOffset + 3))
+        if (auto nextNalStart = functions::findNextNalInData(data, currentDataOffset + 3))
         {
           auto length       = *nextNalStart - currentDataOffset;
           nalData           = data.mid(currentDataOffset, length);
@@ -97,7 +97,7 @@ void FileParserThread::runParser()
         nalID = -1;
 
       DEBUG("Parsing NAL of " << nalData.size() << " bytes");
-      auto parseResult = parser.parseAndAddNALUnit(nalID, convertToByteVector(nalData), {});
+      auto parseResult = parser.parseAndAddNALUnit(nalID, functions::convertToByteVector(nalData), {});
       if (parseResult.success)
       {
         if (parseResult.bitrateEntry)

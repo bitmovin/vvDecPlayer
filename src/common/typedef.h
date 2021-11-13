@@ -69,13 +69,6 @@ struct Size
   unsigned height{};
 };
 
-enum class RawFormat
-{
-  Invalid,
-  YUV,
-  RGB
-};
-
 struct Offset
 {
   Offset(int x, int y) : x(x), y(y) {}
@@ -130,6 +123,11 @@ template <typename T> unsigned clipToUnsigned(T val)
   return unsigned(val);
 }
 
+template <typename T> inline T clip(const T n, const T lower, const T upper)
+{
+  return (n < lower) ? lower : (n > upper) ? upper : n;
+}
+
 struct SegmentData
 {
   SegmentData(size_t bitrate) : bitrate(bitrate) {}
@@ -152,8 +150,13 @@ struct Ratio
 };
 
 /// ---- Custom types
-typedef std::pair<int, int>           IntPair;
-typedef std::pair<uint64_t, uint64_t> pairUint64;
+typedef std::pair<int, int>                 IntPair;
+typedef std::pair<uint64_t, uint64_t>       pairUint64;
+typedef std::pair<std::string, std::string> StringPair;
+typedef std::vector<StringPair>             StringPairVec;
+
+typedef QPair<QString, QString> QStringPair;
+typedef QList<QStringPair>      QStringPairList;
 
 template <typename T> using umap_1d = std::map<unsigned, T>;
 template <typename T> using umap_2d = std::map<unsigned, umap_1d<T>>;

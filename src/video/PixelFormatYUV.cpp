@@ -1,32 +1,40 @@
-/* MIT License
+/*  This file is part of YUView - The YUV player with advanced analytics toolset
+ *   <https://github.com/IENT/YUView>
+ *   Copyright (C) 2015  Institut für Nachrichtentechnik, RWTH Aachen University, GERMANY
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   In addition, as a special exception, the copyright holders give
+ *   permission to link the code of portions of this program with the
+ *   OpenSSL library under certain conditions as described in each
+ *   individual source file, and distribute linked combinations including
+ *   the two.
+ *
+ *   You must obey the GNU General Public License in all respects for all
+ *   of the code used other than OpenSSL. If you modify file(s) with this
+ *   exception, you may extend this exception to your version of the
+ *   file(s), but you are not obligated to do so. If you do not wish to do
+ *   so, delete this exception statement from your version. If you delete
+ *   this exception statement from all source files in the program, then
+ *   also delete it here.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
-Copyright (c) 2021 Christian Feldmann <christian.feldmann@gmx.de>
-                                      <christian.feldmann@bitmovin.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. */
-
-#include "YUVPixelFormat.h"
+#include "PixelFormatYUV.h"
 
 #include <regex>
-#include <sstream>
 
-namespace YUV_Internals
+namespace video::yuv
 {
 
 void getColorConversionCoefficients(ColorConversion colorConversion, int RGBConv[5])
@@ -92,7 +100,7 @@ bool isDefaultChromaFormat(int chromaOffset, bool offsetX, Subsampling subsampli
   return chromaOffset == 0;
 }
 
-YUVPixelFormat::YUVPixelFormat(const std::string &name)
+PixelFormatYUV::PixelFormatYUV(const std::string &name)
 {
   if (auto predefinedFormat = PredefinedPixelFormatMapper.getValue(name))
   {
@@ -110,7 +118,7 @@ YUVPixelFormat::YUVPixelFormat(const std::string &name)
 
   try
   {
-    YUVPixelFormat newFormat;
+    PixelFormatYUV newFormat;
 
     // Is this a packed format or not?
     auto packed      = sm.str(5);
@@ -195,7 +203,7 @@ YUVPixelFormat::YUVPixelFormat(const std::string &name)
   }
 }
 
-YUVPixelFormat::YUVPixelFormat(Subsampling subsampling,
+PixelFormatYUV::PixelFormatYUV(Subsampling subsampling,
                                unsigned    bitsPerSample,
                                PlaneOrder  planeOrder,
                                bool        bigEndian,
@@ -207,7 +215,7 @@ YUVPixelFormat::YUVPixelFormat(Subsampling subsampling,
   this->setDefaultChromaOffset();
 }
 
-YUVPixelFormat::YUVPixelFormat(Subsampling  subsampling,
+PixelFormatYUV::PixelFormatYUV(Subsampling  subsampling,
                                unsigned     bitsPerSample,
                                PackingOrder packingOrder,
                                bool         bytePacking,
@@ -220,17 +228,17 @@ YUVPixelFormat::YUVPixelFormat(Subsampling  subsampling,
   this->setDefaultChromaOffset();
 }
 
-YUVPixelFormat::YUVPixelFormat(PredefinedPixelFormat predefinedPixelFormat)
+PixelFormatYUV::PixelFormatYUV(PredefinedPixelFormat predefinedPixelFormat)
     : predefinedPixelFormat(predefinedPixelFormat)
 {
 }
 
-std::optional<PredefinedPixelFormat> YUVPixelFormat::getPredefinedFormat() const
+std::optional<PredefinedPixelFormat> PixelFormatYUV::getPredefinedFormat() const
 {
   return this->predefinedPixelFormat;
 }
 
-bool YUVPixelFormat::isValid() const
+bool PixelFormatYUV::isValid() const
 {
   if (this->predefinedPixelFormat.has_value())
     return true;
@@ -277,7 +285,7 @@ bool YUVPixelFormat::isValid() const
   return true;
 }
 
-bool YUVPixelFormat::canConvertToRGB(Size imageSize, std::string *whyNot) const
+bool PixelFormatYUV::canConvertToRGB(Size imageSize, std::string *whyNot) const
 {
   if (this->predefinedPixelFormat.has_value())
     return true;
@@ -341,7 +349,7 @@ bool YUVPixelFormat::canConvertToRGB(Size imageSize, std::string *whyNot) const
   return canConvert;
 }
 
-int64_t YUVPixelFormat::bytesPerFrame(const Size &frameSize) const
+int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
 {
   if (this->predefinedPixelFormat)
   {
@@ -431,7 +439,7 @@ int64_t YUVPixelFormat::bytesPerFrame(const Size &frameSize) const
 }
 
 // Generate a unique name for the YUV format
-std::string YUVPixelFormat::getName() const
+std::string PixelFormatYUV::getName() const
 {
   if (!this->isValid())
     return "Invalid";
@@ -472,7 +480,7 @@ std::string YUVPixelFormat::getName() const
   return ss.str();
 }
 
-unsigned YUVPixelFormat::getNrPlanes() const
+unsigned PixelFormatYUV::getNrPlanes() const
 {
   if (this->predefinedPixelFormat)
   {
@@ -489,7 +497,7 @@ unsigned YUVPixelFormat::getNrPlanes() const
   return 3;
 }
 
-Subsampling YUVPixelFormat::getSubsampling() const
+Subsampling PixelFormatYUV::getSubsampling() const
 {
   if (this->predefinedPixelFormat)
   {
@@ -501,7 +509,7 @@ Subsampling YUVPixelFormat::getSubsampling() const
   return this->subsampling;
 }
 
-int YUVPixelFormat::getSubsamplingHor(Component component) const
+int PixelFormatYUV::getSubsamplingHor(Component component) const
 {
   auto sub = this->getSubsampling();
 
@@ -514,7 +522,7 @@ int YUVPixelFormat::getSubsamplingHor(Component component) const
   return 1;
 }
 
-int YUVPixelFormat::getSubsamplingVer(Component component) const
+int PixelFormatYUV::getSubsamplingVer(Component component) const
 {
   auto sub = this->getSubsampling();
 
@@ -527,20 +535,20 @@ int YUVPixelFormat::getSubsamplingVer(Component component) const
   return 1;
 }
 
-void YUVPixelFormat::setDefaultChromaOffset()
+void PixelFormatYUV::setDefaultChromaOffset()
 {
   this->chromaOffset = Offset({0, 0});
   if (this->getSubsampling() == Subsampling::YUV_420)
     this->chromaOffset.y = 1;
 }
 
-bool YUVPixelFormat::isChromaSubsampled() const
+bool PixelFormatYUV::isChromaSubsampled() const
 {
   auto sub = this->getSubsampling();
   return sub != Subsampling::YUV_444;
 }
 
-unsigned YUVPixelFormat::getBitsPerSample() const
+unsigned PixelFormatYUV::getBitsPerSample() const
 {
   if (this->predefinedPixelFormat)
   {
@@ -552,7 +560,7 @@ unsigned YUVPixelFormat::getBitsPerSample() const
   return this->bitsPerSample;
 }
 
-bool YUVPixelFormat::isBigEndian() const
+bool PixelFormatYUV::isBigEndian() const
 {
   if (this->predefinedPixelFormat)
   {
@@ -564,7 +572,7 @@ bool YUVPixelFormat::isBigEndian() const
   return this->bigEndian;
 }
 
-bool YUVPixelFormat::isPlanar() const
+bool PixelFormatYUV::isPlanar() const
 {
   if (this->predefinedPixelFormat)
   {
@@ -576,7 +584,23 @@ bool YUVPixelFormat::isPlanar() const
   return this->planar;
 }
 
-Offset YUVPixelFormat::getChromaOffset() const
+bool PixelFormatYUV::hasAlpha() const
+{
+  if (this->predefinedPixelFormat)
+  {
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+      return false;
+    return false;
+  }
+
+  if (this->planar)
+    return this->planeOrder == PlaneOrder::YUVA || this->planeOrder == PlaneOrder::YVUA;
+  else
+    return this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
+           this->packingOrder == PackingOrder::VUYA;
+}
+
+Offset PixelFormatYUV::getChromaOffset() const
 {
   if (this->predefinedPixelFormat)
   {
@@ -588,7 +612,7 @@ Offset YUVPixelFormat::getChromaOffset() const
   return this->chromaOffset;
 }
 
-bool YUVPixelFormat::isBytePacking() const
+bool PixelFormatYUV::isBytePacking() const
 {
   if (this->predefinedPixelFormat)
   {
@@ -600,4 +624,4 @@ bool YUVPixelFormat::isBytePacking() const
   return this->bytePacking;
 }
 
-} // namespace YUV_Internals
+} // namespace video::yuv
