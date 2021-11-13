@@ -39,12 +39,9 @@ struct LibraryFunctionsVVDec
   vvdecAccessUnit *(*vvdec_accessUnit_alloc)(){};
   void (*vvdec_accessUnit_free)(vvdecAccessUnit *accessUnit){};
   void (*vvdec_accessUnit_alloc_payload)(vvdecAccessUnit *accessUnit, int payload_size){};
-  void (*vvdec_accessUnit_free_payload)(vvdecAccessUnit *accessUnit){};
   void (*vvdec_accessUnit_default)(vvdecAccessUnit *accessUnit){};
 
   void (*vvdec_params_default)(vvdecParams *param){};
-  vvdecParams *(*vvdec_params_alloc)(){};
-  void (*vvdec_params_free)(vvdecParams *params){};
 
   vvdecDecoder *(*vvdec_decoder_open)(vvdecParams *){};
   int (*vvdec_decoder_close)(vvdecDecoder *){};

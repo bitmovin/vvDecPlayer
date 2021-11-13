@@ -36,26 +36,36 @@ SOFTWARE. */
 namespace
 {
 
-SegmentBuffer::SegmentPtr getNextSegmentFromQueue(SegmentBuffer::SegmentPtr          curSegment,
-                                                  const SegmentBuffer::SegmentDeque &segments)
+Segment *getNextSegmentFromQueue(Segment *                             curSegment,
+                                 std::deque<std::unique_ptr<Segment>> &segments)
 {
-  auto segmentIt = std::find(segments.begin(), segments.end(), curSegment);
+  auto segmentIt = std::find_if(
+      segments.begin(), segments.end(), [&curSegment](const std::unique_ptr<Segment> &segment) {
+        return segment.get() == curSegment;
+      });
   if (segmentIt == segments.end())
     return {};
   segmentIt++;
   if (segmentIt == segments.end())
     return {};
-  return *segmentIt;
+  return segmentIt->get();
 }
 
-SegmentBuffer::FrameIterator getNextFrame(const SegmentBuffer::FrameIterator &frame,
-                                          const SegmentBuffer::SegmentDeque & segments)
+SegmentBuffer::FrameIterator getNextFrame(const SegmentBuffer::FrameIterator &  frameIterator,
+                                          std::deque<std::unique_ptr<Segment>> &segments)
 {
-  auto segmentIt = std::find(segments.begin(), segments.end(), frame.segment);
+  auto segmentIt = std::find_if(
+      segments.begin(), segments.end(), [&frameIterator](const std::unique_ptr<Segment> &segment) {
+        return segment.get() == frameIterator.segment;
+      });
   if (segmentIt == segments.end())
     return {};
   auto &segmentFrames  = (*segmentIt)->frames;
-  auto  segmentFrameIt = std::find(segmentFrames.begin(), segmentFrames.end(), frame.frame);
+  auto  segmentFrameIt = std::find_if(segmentFrames.begin(),
+                                     segmentFrames.end(),
+                                     [&frameIterator](const std::unique_ptr<Frame> &frame) {
+                                       return frame.get() == frameIterator.frame;
+                                     });
   if (segmentFrameIt == segmentFrames.end())
     return {};
   auto nextFrameInSegment = (++segmentFrameIt);
@@ -66,9 +76,9 @@ SegmentBuffer::FrameIterator getNextFrame(const SegmentBuffer::FrameIterator &fr
       return {};
     if ((*nextSegment)->frames.size() == 0)
       return {};
-    return {*nextSegment, (*nextSegment)->frames.front()};
+    return {nextSegment->get(), (*nextSegment)->frames.front().get()};
   }
-  return {frame.segment, *nextFrameInSegment};
+  return {frameIterator.segment, nextFrameInSegment->get()};
 }
 
 } // namespace
@@ -83,7 +93,7 @@ void SegmentBuffer::abort()
 }
 
 std::vector<SegmentBuffer::SegmentRenderInfo>
-SegmentBuffer::getBufferStatusForRender(FramePt curPlaybackFrame)
+SegmentBuffer::getBufferStatusForRender(Frame *curPlaybackFrame)
 {
   std::unique_lock               lk(this->segmentQueueMutex);
   std::vector<SegmentRenderInfo> states;
@@ -93,8 +103,8 @@ SegmentBuffer::getBufferStatusForRender(FramePt curPlaybackFrame)
     segmentInfo.downloadProgress = segment->downloadProgress;
     segmentInfo.sizeInBytes      = segment->compressedSizeBytes;
     segmentInfo.nrFrames         = segment->nrFrames;
-    segmentInfo.segmentNumber    = segment->playbackInfo.segmentNumber;
-    segmentInfo.renditionNumber  = segment->playbackInfo.rendition;
+    segmentInfo.segmentNumber    = segment->segmentInfo.segmentNumber;
+    segmentInfo.renditionNumber  = segment->segmentInfo.rendition;
     unsigned frameCounter        = 0;
     for (auto &frame : segment->frames)
     {
@@ -102,7 +112,7 @@ SegmentBuffer::getBufferStatusForRender(FramePt curPlaybackFrame)
       frameInfo.frameState  = frame->frameState;
       frameInfo.sizeInBytes = frame->nrBytesCompressed;
       segmentInfo.frameInfo.push_back(frameInfo);
-      if (frame == curPlaybackFrame)
+      if (frame.get() == curPlaybackFrame)
         segmentInfo.indexOfCurFrameInFrames = frameCounter;
       frameCounter++;
     }
@@ -111,7 +121,9 @@ SegmentBuffer::getBufferStatusForRender(FramePt curPlaybackFrame)
   return states;
 }
 
-SegmentBuffer::SegmentPtr SegmentBuffer::getNextDownloadSegment()
+size_t SegmentBuffer::getNrOfBufferedSegments() { return this->segments.size(); }
+
+Segment *SegmentBuffer::getNextDownloadSegment()
 {
   DEBUG("SegmentBuffer: Get next segment");
 
@@ -121,44 +133,36 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextDownloadSegment()
     return {};
   }
 
-  SegmentPtr newSegment;
   if (this->segmentRecycleBin.empty())
-    newSegment = std::make_shared<Segment>();
+    this->segments.emplace_back(std::make_unique<Segment>());
   else
   {
-    newSegment = this->segmentRecycleBin.front();
+    this->segments.push_back(std::move(this->segmentRecycleBin.front()));
     this->segmentRecycleBin.pop();
   }
 
-  this->segments.push_back(newSegment);
-  return newSegment;
+  return this->segments.back().get();
 }
 
-SegmentBuffer::FramePt SegmentBuffer::addNewFrameToSegment(SegmentPtr segment)
+Frame *SegmentBuffer::addNewFrameToSegment(Segment *segment)
 {
   std::shared_lock lk(this->segmentQueueMutex);
 
-  FramePt newFrame;
   if (this->frameRecycleBin.empty())
-    newFrame = std::make_shared<Frame>();
+    segment->frames.emplace_back(std::make_unique<Frame>());
   else
   {
-    newFrame = this->frameRecycleBin.front();
+    segment->frames.push_back(std::move(this->frameRecycleBin.front()));
     this->frameRecycleBin.pop();
   }
 
-  segment->frames.push_back(newFrame);
   segment->nrFrames++;
-  return newFrame;
+  return segment->frames.back().get();
 }
 
-void SegmentBuffer::onDownloadFinished()
-{
-  this->eventCV.notify_all();
-  this->tryToStartNextDownload();
-}
+void SegmentBuffer::onDownloadOfSegmentFinished() { this->eventCV.notify_all(); }
 
-SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToParse()
+Segment *SegmentBuffer::getFirstSegmentToParse()
 {
   DEBUG("SegmentBuffer: Waiting for first segment to parse.");
   this->eventCV.notify_all();
@@ -179,10 +183,10 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToParse()
   }
 
   DEBUG("SegmentBuffer: First segment to parse ready");
-  return *this->segments.begin();
+  return this->segments.begin()->get();
 }
 
-SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToParse(SegmentPtr segmentPtr)
+Segment *SegmentBuffer::getNextSegmentToParse(Segment *segmentPtr)
 {
   DEBUG("SegmentBuffer: Waiting for next segment to parse");
   this->eventCV.notify_all();
@@ -206,7 +210,7 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToParse(SegmentPtr segmen
   return getNextSegmentFromQueue(segmentPtr, this->segments);
 }
 
-SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToDecode()
+Segment *SegmentBuffer::getFirstSegmentToDecode()
 {
   DEBUG("SegmentBuffer: Waiting for first segment to decode.");
   this->eventCV.notify_all();
@@ -227,10 +231,10 @@ SegmentBuffer::SegmentPtr SegmentBuffer::getFirstSegmentToDecode()
   }
 
   DEBUG("SegmentBuffer: First segment to decode ready");
-  return *this->segments.begin();
+  return this->segments.begin()->get();
 }
 
-SegmentBuffer::SegmentPtr SegmentBuffer::getNextSegmentToDecode(SegmentPtr segmentPtr)
+Segment *SegmentBuffer::getNextSegmentToDecode(Segment *segmentPtr)
 {
   DEBUG("SegmentBuffer: Waiting for next segment to decode");
   this->eventCV.notify_all();
@@ -282,7 +286,7 @@ SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToConvert()
   }
 
   DEBUG("SegmentBuffer: First frame to convert ready");
-  return {this->segments.front(), this->segments.front()->frames.front()};
+  return {this->segments.front().get(), this->segments.front()->frames.front().get()};
 }
 
 SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToConvert(FrameIterator frameIt)
@@ -337,7 +341,7 @@ SegmentBuffer::FrameIterator SegmentBuffer::getFirstFrameToDisplay()
 
   DEBUG("First frame to display ready.");
   this->eventCV.notify_all();
-  return {firstSegment, firstSegment->frames.front()};
+  return {firstSegment.get(), firstSegment->frames.front().get()};
 }
 
 SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator frameIt)
@@ -361,10 +365,10 @@ SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator 
 
   if (frameIt.segment != nextFrame.segment)
   {
-    assert(frameIt.segment == this->segments.front());
+    assert(frameIt.segment == this->segments.front().get());
+    this->recycleSegmentAndFrames(std::move(this->segments.front()));
     this->segments.pop_front();
-    this->recycleSegmentAndFrames(frameIt.segment);
-    this->tryToStartNextDownload();
+    emit segmentRemovedFromBuffer();
   }
 
   DEBUG("Next frame to display ready.");
@@ -372,20 +376,13 @@ SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator 
   return nextFrame;
 }
 
-void SegmentBuffer::tryToStartNextDownload()
+void SegmentBuffer::recycleSegmentAndFrames(std::unique_ptr<Segment> &&segment)
 {
-  constexpr auto MAX_DOWNLOADED_SEGMENTS_IN_QUEUE = 5;
-  if (this->segments.size() < MAX_DOWNLOADED_SEGMENTS_IN_QUEUE)
-    emit startNextDownload();
-}
-
-void SegmentBuffer::recycleSegmentAndFrames(SegmentPtr segment)
-{
-  for (auto frameIt : segment->frames)
+  for (auto &frameIt : segment->frames)
   {
     frameIt->clear();
-    this->frameRecycleBin.push(frameIt);
+    this->frameRecycleBin.push(std::move(frameIt));
   }
   segment->clear();
-  this->segmentRecycleBin.push(segment);
+  this->segmentRecycleBin.push(std::move(segment));
 }

@@ -33,9 +33,12 @@ SOFTWARE. */
 #include <threads/FrameConversionThread.h>
 
 #include <QDir>
+#include <QObject>
 
-class PlaybackController
+class PlaybackController : public QObject
 {
+  Q_OBJECT
+
 public:
   PlaybackController(ILogger *logger);
   ~PlaybackController();
@@ -52,18 +55,25 @@ public:
   QString getStatus();
   auto    getLastSegmentsData() -> std::deque<SegmentData>;
 
-  SegmentBuffer *getSegmentBuffer() { return &this->segmentBuffer; }
+  SegmentBuffer *getSegmentBuffer() { return this->segmentBuffer.get(); }
   ManifestFile * getManifest() { return this->manifestFile.get(); }
 
+private slots:
+  void downloadOfSegmentFinished();
+  void fillDownloadQueue();
+
 private:
+  void activateManifest();
+
   ILogger *logger{};
 
   std::unique_ptr<FileDownloader>        downloader;
   std::unique_ptr<DecoderThread>         decoder;
   std::unique_ptr<FileParserThread>      parser;
   std::unique_ptr<FrameConversionThread> conversion;
+  std::unique_ptr<SegmentBuffer>         segmentBuffer;
+
+  std::unique_ptr<Segment> highestRenditionFirstSegment;
 
   std::unique_ptr<ManifestFile> manifestFile;
-
-  SegmentBuffer segmentBuffer;
 };

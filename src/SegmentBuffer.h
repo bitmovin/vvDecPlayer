@@ -29,6 +29,7 @@ SOFTWARE. */
 #include <condition_variable>
 #include <deque>
 #include <iterator>
+#include <optional>
 #include <queue>
 #include <shared_mutex>
 
@@ -51,17 +52,13 @@ public:
 
   void abort();
 
-  using FramePt      = std::shared_ptr<Frame>;
-  using SegmentPtr   = std::shared_ptr<Segment>;
-  using SegmentDeque = std::deque<SegmentPtr>;
-
   struct FrameIterator
   {
     FrameIterator() = default;
-    FrameIterator(SegmentPtr segment, FramePt frame) : segment(segment), frame(frame) {}
-    bool       isNull() { return this->segment == nullptr || this->frame == nullptr; }
-    SegmentPtr segment;
-    FramePt    frame;
+    FrameIterator(Segment *segment, Frame *frame) : segment(segment), frame(frame) {}
+    bool     isNull() { return this->segment == nullptr || this->frame == nullptr; }
+    Segment *segment{};
+    Frame *  frame{};
   };
 
   struct SegmentRenderInfo
@@ -80,21 +77,23 @@ public:
     };
     std::vector<FrameInfo> frameInfo;
   };
-  std::vector<SegmentRenderInfo> getBufferStatusForRender(FramePt curPlaybackFrame);
+  std::vector<SegmentRenderInfo> getBufferStatusForRender(Frame *curPlaybackFrame);
+
+  size_t getNrOfBufferedSegments();
 
   // These provide new (or maybe recycled) segments/frames. These do not block.
-  SegmentPtr getNextDownloadSegment();
-  FramePt    addNewFrameToSegment(SegmentPtr segment);
+  Segment *getNextDownloadSegment();
+  Frame *  addNewFrameToSegment(Segment *segment);
 
   // The parser will get segments to parser here (and may get blocked if no segment is ready yet)
-  SegmentPtr getFirstSegmentToParse();
-  SegmentPtr getNextSegmentToParse(SegmentPtr segment);
+  Segment *getFirstSegmentToParse();
+  Segment *getNextSegmentToParse(Segment *segment);
 
   // The decoder will get segments to decode here (and may get blocked if too many
   // decoded frames are already in the buffer)
-  SegmentPtr getFirstSegmentToDecode();
-  SegmentPtr getNextSegmentToDecode(SegmentPtr segment);
-  void       onFrameDecoded();
+  Segment *getFirstSegmentToDecode();
+  Segment *getNextSegmentToDecode(Segment *segment);
+  void     onFrameDecoded();
 
   // The converter will get frames to convert here (and may get blocked if there
   // are none)
@@ -105,23 +104,20 @@ public:
   FrameIterator getFirstFrameToDisplay();
   FrameIterator getNextFrameToDisplay(FrameIterator frameIt);
 
-signals:
-  void startNextDownload();
+  void onDownloadOfSegmentFinished();
 
-public slots:
-  void onDownloadFinished();
+signals:
+  void segmentRemovedFromBuffer();
 
 private:
-  void tryToStartNextDownload();
-
-  SegmentDeque segments;
+  std::deque<std::unique_ptr<Segment>> segments;
 
   std::condition_variable_any eventCV;
   std::shared_mutex           segmentQueueMutex;
 
   bool aborted{false};
 
-  void                   recycleSegmentAndFrames(SegmentPtr segment);
-  std::queue<SegmentPtr> segmentRecycleBin;
-  std::queue<FramePt>    frameRecycleBin;
+  void                                 recycleSegmentAndFrames(std::unique_ptr<Segment> &&segment);
+  std::queue<std::unique_ptr<Segment>> segmentRecycleBin;
+  std::queue<std::unique_ptr<Frame>>   frameRecycleBin;
 };

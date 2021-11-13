@@ -25,6 +25,8 @@ SOFTWARE. */
 
 #include <common/functions.h>
 #include <decoder/decoderVVDec.h>
+#include <parser/VVC/nal_unit_header.h>
+#include <parser/common/SubByteReaderLogging.h>
 
 #include <QDebug>
 #include <chrono>
@@ -36,6 +38,30 @@ SOFTWARE. */
 #else
 #define DEBUG(f) ((void)0)
 #endif
+
+namespace
+{
+
+bool isSPSNAL(QByteArray nalData)
+{
+  auto data = convertToByteVector(nalData);
+
+  // Skip the NAL unit header
+  int readOffset = 0;
+  if (data.size() > 3 && data.at(0) == (char)0 && data.at(1) == (char)0 && data.at(2) == (char)1)
+    readOffset = 3;
+  else if (data.size() > 4 && data.at(0) == (char)0 && data.at(1) == (char)0 &&
+           data.at(2) == (char)0 && data.at(3) == (char)1)
+    readOffset = 4;
+
+  parser::reader::SubByteReaderLogging reader(data, {}, "", readOffset);
+  parser::vvc::nal_unit_header         header;
+  header.parse(reader);
+
+  return header.nal_unit_type == parser::vvc::NalType::SPS_NUT;
+}
+
+} // namespace
 
 DecoderThread::DecoderThread(ILogger *logger, SegmentBuffer *segmentBuffer)
     : logger(logger), segmentBuffer(segmentBuffer)
@@ -60,19 +86,61 @@ DecoderThread::~DecoderThread()
 
 void DecoderThread::abort() { this->decoderAbort = true; }
 
+void DecoderThread::setOpenGopAdaptiveResolutionChange(bool adaptiveResolutioChange)
+{
+  this->adaptiveResolutioChange = adaptiveResolutioChange;
+}
+
 QString DecoderThread::getStatus() const
 {
   return (this->decoderAbort ? "Abort " : "") + this->statusText;
+}
+
+void DecoderThread::onDownloadOfFirstSPSSegmentFinished(QByteArray segmentData)
+{
+  auto startPos = findNextNalInData(segmentData, 0);
+  if (!startPos)
+  {
+    this->logger->addMessage("SPS could not be extracted from highest rendition",
+                             LoggingPriority::Error);
+    return;
+  }
+
+  size_t currentDataOffset = *startPos;
+  while (currentDataOffset < size_t(segmentData.size()))
+  {
+    QByteArray nalData;
+    if (auto nextNalStart = findNextNalInData(segmentData, currentDataOffset + 3))
+    {
+      auto length       = *nextNalStart - currentDataOffset;
+      nalData           = segmentData.mid(currentDataOffset, length);
+      currentDataOffset = *nextNalStart;
+    }
+    else if (currentDataOffset < size_t(segmentData.size()))
+    {
+      nalData           = segmentData.mid(currentDataOffset);
+      currentDataOffset = segmentData.size();
+    }
+
+    if (isSPSNAL(nalData))
+    {
+      this->highestRenditionSPS = nalData;
+      return;
+    }
+  }
+
+  this->logger->addMessage("SPS could not be extracted from highest rendition",
+                           LoggingPriority::Error);
 }
 
 void DecoderThread::runDecoder()
 {
   this->logger->addMessage("Started decoder thread", LoggingPriority::Info);
 
-  size_t   currentDataOffset        = 0;
-  unsigned currentFrameIdxInSegment = 0;
-  auto     itSegmentData            = this->segmentBuffer->getFirstSegmentToDecode();
-  std::queue<SegmentBuffer::SegmentPtr> nextSegmentFrames;
+  size_t                currentDataOffset        = 0;
+  unsigned              currentFrameIdxInSegment = 0;
+  auto                  itSegmentData            = this->segmentBuffer->getFirstSegmentToDecode();
+  std::queue<Segment *> nextSegmentFrames;
   nextSegmentFrames.push(itSegmentData);
 
   while (!this->decoderAbort)
@@ -118,16 +186,16 @@ void DecoderThread::runDecoder()
           }
 
           DEBUG(QString("Got next segment Rendition %1 Segment %2")
-                    .arg(nextSegment->playbackInfo.rendition)
-                    .arg(nextSegment->playbackInfo.segmentNumber));
+                    .arg(nextSegment->segmentInfo.rendition)
+                    .arg(nextSegment->segmentInfo.segmentNumber));
 
           auto renditionSwitch =
-              nextSegment->playbackInfo.rendition != itSegmentData->playbackInfo.rendition;
+              nextSegment->segmentInfo.rendition != itSegmentData->segmentInfo.rendition;
 
           itSegmentData = nextSegment;
           nextSegmentFrames.push(nextSegment);
 
-          if (renditionSwitch)
+          if (renditionSwitch && !this->adaptiveResolutioChange)
           {
             resetDecoderAfterSegment = true;
             DEBUG("Pushing empty data (EOF)");
@@ -142,6 +210,12 @@ void DecoderThread::runDecoder()
         }
         else
         {
+          if (!this->highestRenditionSPS.isEmpty() && isSPSNAL(nalData))
+          {
+            DEBUG("Replace SPS with SPS from highest rendition");
+            nalData = this->highestRenditionSPS;
+          }
+
           DEBUG("Pushing " << nalData.size() << " bytes");
           if (!this->decoder->pushData(nalData))
           {
@@ -182,7 +256,7 @@ void DecoderThread::runDecoder()
             }
           }
 
-          auto frame         = itSegmentFrames->frames.at(currentFrameIdxInSegment);
+          auto &frame       = itSegmentFrames->frames.at(currentFrameIdxInSegment);
           frame->rawYUVData  = this->decoder->getRawFrameData();
           frame->pixelFormat = this->decoder->getYUVPixelFormat();
           frame->frameSize   = this->decoder->getFrameSize();
@@ -192,8 +266,8 @@ void DecoderThread::runDecoder()
                     .arg(frame->frameSize.width)
                     .arg(frame->frameSize.height)
                     .arg(currentFrameIdxInSegment)
-                    .arg(itSegmentFrames->playbackInfo.segmentNumber)
-                    .arg(itSegmentFrames->playbackInfo.rendition));
+                    .arg(itSegmentFrames->segmentInfo.segmentNumber)
+                    .arg(itSegmentFrames->segmentInfo.rendition));
           this->segmentBuffer->onFrameDecoded();
           currentFrameIdxInSegment++;
         }
@@ -203,8 +277,8 @@ void DecoderThread::runDecoder()
       {
         DEBUG("Decoding error");
         this->logger->addMessage(QString("Error decoding rend %1 seg %2 frame %3")
-                                     .arg(itSegmentData->playbackInfo.rendition)
-                                     .arg(itSegmentData->playbackInfo.segmentNumber)
+                                     .arg(itSegmentData->segmentInfo.rendition)
+                                     .arg(itSegmentData->segmentInfo.segmentNumber)
                                      .arg(currentFrameIdxInSegment),
                                  LoggingPriority::Error);
         break;

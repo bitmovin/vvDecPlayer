@@ -34,9 +34,9 @@ SOFTWARE. */
 #define decoderVVDec_DEBUG_OUTPUT 0
 #if decoderVVDec_DEBUG_OUTPUT
 #include <QDebug>
-#define DEBUG_vvdec qDebug
+#define DEBUG_vvdec(msg) qDebug() << msg
 #else
-#define DEBUG_vvdec(fmt, ...) ((void)0)
+#define DEBUG_vvdec(msg) ((void)0)
 #endif
 
 // Restrict is basically a promise to the compiler that for the scope of the pointer, the target of
@@ -172,18 +172,10 @@ void decoderVVDec::resolveLibraryFunctionPointers()
     return;
   if (!resolve(this->lib.vvdec_accessUnit_alloc_payload, "vvdec_accessUnit_alloc_payload"))
     return;
-  if (!resolve(this->lib.vvdec_accessUnit_free_payload, "vvdec_accessUnit_free_payload"))
-    return;
   if (!resolve(this->lib.vvdec_accessUnit_default, "vvdec_accessUnit_default"))
     return;
 
   if (!resolve(this->lib.vvdec_params_default, "vvdec_params_default"))
-    return;
-  if (!resolve(this->lib.vvdec_params_alloc, "vvdec_params_alloc"))
-    return;
-  if (!resolve(this->lib.vvdec_params_alloc, "vvdec_params_alloc"))
-    return;
-  if (!resolve(this->lib.vvdec_params_free, "vvdec_params_free"))
     return;
 
   if (!resolve(this->lib.vvdec_decoder_open, "vvdec_decoder_open"))
@@ -243,7 +235,7 @@ void decoderVVDec::allocateNewDecoder()
   if (this->decoder != nullptr)
     return;
 
-  DEBUG_vvdec("decoderVVDec::allocateNewDecoder - decodeSignal %d", decodeSignal);
+  DEBUG_vvdec("decoderVVDec::allocateNewDecoder - decodeSignal " << decodeSignal);
 
   vvdecParams params;
   this->lib.vvdec_params_default(&params);
@@ -301,8 +293,8 @@ bool decoderVVDec::decodeNextFrame()
     }
     else if (ret != VVDEC_OK)
       return setErrorB("Error sendling flush to decoder");
-    DEBUG_vvdec("decoderVVDec::pushData: Flushing to next pixture. %s",
-                this->currentFrame != nullptr ? " frameAvailable" : "");
+    DEBUG_vvdec("decoderVVDec::pushData: Flushing to next pixture. "
+                << (this->currentFrame != nullptr ? " frameAvailable" : ""));
 
     if (this->currentFrame == nullptr)
     {
@@ -342,6 +334,10 @@ bool decoderVVDec::getNextFrameFromDecoder()
     return false;
   }
 
+  DEBUG_vvdec("decoderVVDec::getNextFrameFromDecoder got frame CTS "
+              << this->currentFrame->cts << " sequenceNumber " << this->currentFrame->sequenceNumber
+              << " ctsValid " << this->currentFrame->ctsValid);
+
   // Check the validity of the picture
   const auto lumaSize = Size({this->currentFrame->width, this->currentFrame->height});
   const auto nrPlanes = (this->currentFrame->colorFormat == VVDEC_CF_YUV400_PLANAR) ? 1u : 3u;
@@ -366,17 +362,12 @@ bool decoderVVDec::getNextFrameFromDecoder()
       DEBUG_vvdec("decoderVVDec::getNextFrameFromDecoder plane has different size then expected");
   }
 
-  if (!this->frameSize.isValid() && !this->formatYUV.isValid())
-  {
-    // Set the values
-    this->frameSize = lumaSize;
+  this->frameSize = lumaSize;
+  if (!this->formatYUV.isValid())
     this->formatYUV = YUV_Internals::YUVPixelFormat(subsampling, bitDepth);
-  }
   else
   {
     // Check the values against the previously set values
-    if (this->frameSize != lumaSize)
-      return setErrorB("Received a frame of different size");
     if (this->formatYUV.getSubsampling() != subsampling)
       return setErrorB("Received a frame with different subsampling");
     if (unsigned(this->formatYUV.getBitsPerSample()) != bitDepth)
@@ -430,9 +421,8 @@ bool decoderVVDec::pushData(QByteArray &data)
                            .arg(cErrAdd));
     }
 
-    DEBUG_vvdec("decoderVVDec::pushData pushed NAL length %d%s",
-                data.length(),
-                this->currentFrame != nullptr ? " frameAvailable" : "");
+    DEBUG_vvdec("decoderVVDec::pushData pushed NAL length "
+                << data.length() << (this->currentFrame != nullptr ? " frameAvailable" : ""));
   }
 
   if (this->getNextFrameFromDecoder())
@@ -452,11 +442,14 @@ QByteArray decoderVVDec::getRawFrameData()
     return {};
   }
 
-  if (this->currentOutputBuffer.isEmpty())
+  if (this->currentFrame && this->currentOutputBuffer.isEmpty())
   {
     // Put image data into buffer
     copyImgToByteArray(this->currentOutputBuffer);
     DEBUG_vvdec("decoderVVDec::getRawFrameData copied frame to buffer");
+
+    this->lib.vvdec_frame_unref(this->decoder, this->currentFrame);
+    this->currentFrame = nullptr;
   }
 
   return currentOutputBuffer;
@@ -479,7 +472,7 @@ void decoderVVDec::copyImgToByteArray(QByteArray &dst)
   auto outSizeChromaBytes = chromaSize.width * chromaSize.height * bytesPerSample;
   // How many bytes do we need in the output buffer?
   auto nrBytesOutput = (outSizeLumaBytes + outSizeChromaBytes * 2);
-  DEBUG_vvdec("decoderVVDec::copyImgToByteArray nrBytesOutput %d", nrBytesOutput);
+  DEBUG_vvdec("decoderVVDec::copyImgToByteArray nrBytesOutput " << nrBytesOutput);
 
   // Is the output big enough?
   if (dst.capacity() < int(nrBytesOutput))
@@ -494,7 +487,7 @@ void decoderVVDec::copyImgToByteArray(QByteArray &dst)
 
     if (component.ptr == nullptr)
     {
-      DEBUG_vvdec("decoderVVDec::copyImgToByteArray unable to get plane for component %d", c);
+      DEBUG_vvdec("decoderVVDec::copyImgToByteArray unable to get plane for component " << c);
       return;
     }
 

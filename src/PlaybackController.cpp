@@ -24,8 +24,8 @@ SOFTWARE. */
 #include "PlaybackController.h"
 
 #include <QDebug>
-#include <decoder/decoderVVDec.h>
 #include <assert.h>
+#include <decoder/decoderVVDec.h>
 
 PlaybackController::PlaybackController(ILogger *logger) : logger(logger)
 {
@@ -38,17 +38,37 @@ PlaybackController::~PlaybackController()
   this->decoder->abort();
   this->parser->abort();
   this->conversion->abort();
-  this->segmentBuffer.abort();
+  this->segmentBuffer->abort();
 }
 
 void PlaybackController::reset()
 {
-  this->downloader = std::make_unique<FileDownloader>(this->logger, &this->segmentBuffer);
-  this->parser     = std::make_unique<FileParserThread>(this->logger, &this->segmentBuffer);
-  this->conversion = std::make_unique<FrameConversionThread>(this->logger, &this->segmentBuffer);
-  this->decoder    = std::make_unique<DecoderThread>(this->logger, &this->segmentBuffer);
+  if (this->segmentBuffer)
+    this->segmentBuffer->abort();
+  this->downloader.reset(nullptr);
+  this->parser.reset(nullptr);
+  this->conversion.reset(nullptr);
+  this->decoder.reset(nullptr);
+  this->segmentBuffer.reset(nullptr);
 
   this->logger->clearMessages();
+
+  this->segmentBuffer = std::make_unique<SegmentBuffer>();
+  this->downloader    = std::make_unique<FileDownloader>(this->logger);
+  this->parser        = std::make_unique<FileParserThread>(this->logger, this->segmentBuffer.get());
+  this->conversion =
+      std::make_unique<FrameConversionThread>(this->logger, this->segmentBuffer.get());
+  this->decoder = std::make_unique<DecoderThread>(this->logger, this->segmentBuffer.get());
+
+  connect(this->downloader.get(),
+          &FileDownloader::downloadOfSegmentFinished,
+          this,
+          &PlaybackController::downloadOfSegmentFinished);
+  connect(this->segmentBuffer.get(),
+          &SegmentBuffer::segmentRemovedFromBuffer,
+          this,
+          &PlaybackController::fillDownloadQueue);
+
   this->logger->addMessage("Playback Controller initialized", LoggingPriority::Info);
 }
 
@@ -57,7 +77,11 @@ bool PlaybackController::openJsonManifestFile(QString jsonManifestFile)
   this->manifestFile = std::make_unique<ManifestFile>(this->logger);
   auto success       = this->manifestFile->openJsonManifestFile(jsonManifestFile);
   if (success)
-    this->downloader->activateManifest(this->manifestFile.get());
+  {
+    this->activateManifest();
+    this->decoder->setOpenGopAdaptiveResolutionChange(
+        this->manifestFile->isopenGopAdaptiveResolutionChange());
+  }
   return success;
 }
 
@@ -66,7 +90,11 @@ bool PlaybackController::openPredefinedManifest(unsigned predefinedManifestID)
   this->manifestFile = std::make_unique<ManifestFile>(this->logger);
   auto success       = this->manifestFile->openPredefinedManifest(predefinedManifestID);
   if (success)
-    this->downloader->activateManifest(this->manifestFile.get());
+  {
+    this->activateManifest();
+    this->decoder->setOpenGopAdaptiveResolutionChange(
+        this->manifestFile->isopenGopAdaptiveResolutionChange());
+  }
   return success;
 }
 
@@ -89,4 +117,40 @@ QString PlaybackController::getStatus()
   status += "Decoder: " + this->decoder->getStatus() + "\n";
   status += "Conversion: " + this->conversion->getStatus() + "\n";
   return status;
+}
+
+void PlaybackController::activateManifest()
+{
+  if (this->manifestFile->isopenGopAdaptiveResolutionChange())
+  {
+    this->highestRenditionFirstSegment = std::make_unique<Segment>();
+    this->highestRenditionFirstSegment->segmentInfo =
+        this->manifestFile->getSegmentSPSHighestRendition();
+    this->downloader->addFileToDownloadQueue(this->highestRenditionFirstSegment.get());
+  }
+  this->fillDownloadQueue();
+}
+
+void PlaybackController::downloadOfSegmentFinished()
+{
+  if (this->highestRenditionFirstSegment)
+  {
+    if (this->highestRenditionFirstSegment->compressedData.isEmpty())
+      this->logger->addMessage("Recieved no data for highest rendition segment",
+                               LoggingPriority::Error);
+    this->highestRenditionFirstSegment.reset();
+  }
+  else
+    this->segmentBuffer->onDownloadOfSegmentFinished();
+}
+
+void PlaybackController::fillDownloadQueue()
+{
+  while (this->segmentBuffer->getNrOfBufferedSegments() <
+         this->manifestFile->getMaxSegmentBufferSize())
+  {
+    auto segment         = this->segmentBuffer->getNextDownloadSegment();
+    segment->segmentInfo = this->manifestFile->getNextSegmentInfo();
+    this->downloader->addFileToDownloadQueue(segment);
+  }
 }

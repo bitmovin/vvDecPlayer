@@ -27,18 +27,26 @@ SOFTWARE. */
 #include <common/ILogger.h>
 #include <decoder/decoderBase.h>
 
+#include <QObject>
 #include <condition_variable>
 #include <optional>
 #include <thread>
 
-class DecoderThread
+class DecoderThread : public QObject
 {
+  Q_OBJECT
+
 public:
   DecoderThread(ILogger *logger, SegmentBuffer *segmentBuffer);
   ~DecoderThread();
   void abort();
 
+  void setOpenGopAdaptiveResolutionChange(bool adaptiveResolutioChange);
+
   QString getStatus() const;
+
+public slots:
+  void onDownloadOfFirstSPSSegmentFinished(QByteArray segmentData);
 
 private:
   ILogger *      logger{};
@@ -49,7 +57,10 @@ private:
   std::unique_ptr<decoder::decoderBase> decoder;
 
   std::thread decoderThread;
-  bool        decoderAbort{false};
+  bool        decoderAbort{};
+  bool        adaptiveResolutioChange{};
+
+  QByteArray highestRenditionSPS;
 
   QString statusText;
 };

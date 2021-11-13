@@ -49,6 +49,22 @@ Size parseResolutionString(QString resolutionString)
   return {width, height};
 }
 
+Segment::SegmentInfo createSegmentInfoForRendition(const ManifestFile::Rendition &rendition,
+                                                   unsigned                       currentSegment,
+                                                   unsigned                       currentRendition)
+{
+  Segment::SegmentInfo segmentInfo;
+  segmentInfo.segmentNumber = currentSegment;
+  segmentInfo.rendition     = currentRendition;
+  segmentInfo.fps           = rendition.fps;
+
+  auto url = rendition.url;
+  url.replace("%i", QString("%1").arg(currentSegment));
+  segmentInfo.downloadUrl = url;
+
+  return segmentInfo;
+}
+
 const auto PREDEFINED_MANIFEST_0 = QByteArray(
     R"--json--({
     "Name": "Sintel 720p only",
@@ -118,6 +134,13 @@ bool ManifestFile::openFromData(QByteArray data)
       throw std::logic_error("No renditions found");
     auto renditions = mainObject["Renditions"].toArray();
 
+    if (mainObject.contains("OpenGOPAdaptiveResolutionChange"))
+      this->openGopAdaptiveResolutionChange =
+          mainObject["OpenGOPAdaptiveResolutionChange"].toBool();
+
+    if (mainObject.contains("MaxSegmentBufferSize"))
+      this->maxSegmentBufferSize = size_t(mainObject["MaxSegmentBufferSize"].toInt());
+
     for (auto renditionValue : renditions)
     {
       if (!renditionValue.isObject())
@@ -176,22 +199,22 @@ std::optional<ManifestFile::Rendition> ManifestFile::getCurrentRenditionInfo() c
   return this->renditions.at(id);
 }
 
-Segment::PlaybackInfo ManifestFile::getNextSegment()
+Segment::SegmentInfo ManifestFile::getNextSegmentInfo()
 {
   auto &rendition = this->renditions.at(this->currentRendition);
 
-  Segment::PlaybackInfo segmentInfo;
-  segmentInfo.segmentNumber = this->currentSegment;
-  segmentInfo.rendition     = this->currentRendition;
-  segmentInfo.fps           = rendition.fps;
-
-  auto url = rendition.url;
-  url.replace("%i", QString("%1").arg(this->currentSegment));
-  segmentInfo.downloadUrl = url;
+  auto segmentInfo =
+      createSegmentInfoForRendition(rendition, this->currentSegment, this->currentRendition);
 
   this->currentSegment++;
   if (this->currentSegment >= this->numberSegments)
     this->currentSegment = 0;
 
   return segmentInfo;
+}
+
+Segment::SegmentInfo ManifestFile::getSegmentSPSHighestRendition()
+{
+  auto &rendition = this->renditions.back();
+  return createSegmentInfoForRendition(rendition, 0, unsigned(this->renditions.size()) - 1);
 }
