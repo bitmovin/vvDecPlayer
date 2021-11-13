@@ -30,7 +30,7 @@ jobs:
     #   run: |
     #     brew install qt
     #   if: matrix.os == 'macos-10.15' || matrix.os == 'macos-11.0'
-    # - name: Install Qt
+    - name: Install Qt
       uses: jurplel/install-qt-action@v2
     - name: Build (Linux/mac)
       run: |
