@@ -54,10 +54,11 @@ public:
   std::vector<Rendition>   getRenditionInfos() const { return this->renditions; }
   std::optional<Rendition> getCurrentRenditionInfo() const;
   unsigned                 getPlotMaxBitrate() const { return this->plotMaxBitrate; }
-  bool isopenGopAdaptiveResolutionChange() const { return this->openGopAdaptiveResolutionChange; }
+  bool   isopenGopAdaptiveResolutionChange() const { return this->openGopAdaptiveResolutionChange; }
+  size_t getMaxSegmentBufferSize() const { return this->maxSegmentBufferSize; }
 
-  Segment::PlaybackInfo getNextSegment();
-  Segment::PlaybackInfo getSegmentSPSHighestRendition();
+  Segment::SegmentInfo getNextSegmentInfo();
+  Segment::SegmentInfo getSegmentSPSHighestRendition();
 
 private:
   ILogger *logger{};
@@ -70,6 +71,7 @@ private:
   unsigned numberSegments{};
   unsigned plotMaxBitrate{};
   bool     openGopAdaptiveResolutionChange{};
+  size_t   maxSegmentBufferSize{5};
 
   std::vector<Rendition> renditions;
 

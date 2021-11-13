@@ -49,11 +49,11 @@ Size parseResolutionString(QString resolutionString)
   return {width, height};
 }
 
-Segment::PlaybackInfo createPlaybackInfoForRendition(const ManifestFile::Rendition &rendition,
-                                                     unsigned                       currentSegment,
-                                                     unsigned currentRendition)
+Segment::SegmentInfo createSegmentInfoForRendition(const ManifestFile::Rendition &rendition,
+                                                   unsigned                       currentSegment,
+                                                   unsigned                       currentRendition)
 {
-  Segment::PlaybackInfo segmentInfo;
+  Segment::SegmentInfo segmentInfo;
   segmentInfo.segmentNumber = currentSegment;
   segmentInfo.rendition     = currentRendition;
   segmentInfo.fps           = rendition.fps;
@@ -138,6 +138,9 @@ bool ManifestFile::openFromData(QByteArray data)
       this->openGopAdaptiveResolutionChange =
           mainObject["OpenGOPAdaptiveResolutionChange"].toBool();
 
+    if (mainObject.contains("MaxSegmentBufferSize"))
+      this->maxSegmentBufferSize = size_t(mainObject["MaxSegmentBufferSize"].toInt());
+
     for (auto renditionValue : renditions)
     {
       if (!renditionValue.isObject())
@@ -196,12 +199,12 @@ std::optional<ManifestFile::Rendition> ManifestFile::getCurrentRenditionInfo() c
   return this->renditions.at(id);
 }
 
-Segment::PlaybackInfo ManifestFile::getNextSegment()
+Segment::SegmentInfo ManifestFile::getNextSegmentInfo()
 {
   auto &rendition = this->renditions.at(this->currentRendition);
 
   auto segmentInfo =
-      createPlaybackInfoForRendition(rendition, this->currentSegment, this->currentRendition);
+      createSegmentInfoForRendition(rendition, this->currentSegment, this->currentRendition);
 
   this->currentSegment++;
   if (this->currentSegment >= this->numberSegments)
@@ -210,8 +213,8 @@ Segment::PlaybackInfo ManifestFile::getNextSegment()
   return segmentInfo;
 }
 
-Segment::PlaybackInfo ManifestFile::getSegmentSPSHighestRendition()
+Segment::SegmentInfo ManifestFile::getSegmentSPSHighestRendition()
 {
   auto &rendition = this->renditions.back();
-  return createPlaybackInfoForRendition(rendition, 0, unsigned(this->renditions.size()) - 1);
+  return createSegmentInfoForRendition(rendition, 0, unsigned(this->renditions.size()) - 1);
 }

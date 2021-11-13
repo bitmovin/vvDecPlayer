@@ -54,24 +54,20 @@ void PlaybackController::reset()
   this->logger->clearMessages();
 
   this->segmentBuffer = std::make_unique<SegmentBuffer>();
-  this->downloader    = std::make_unique<FileDownloader>(this->logger, this->segmentBuffer.get());
+  this->downloader    = std::make_unique<FileDownloader>(this->logger);
   this->parser        = std::make_unique<FileParserThread>(this->logger, this->segmentBuffer.get());
   this->conversion =
       std::make_unique<FrameConversionThread>(this->logger, this->segmentBuffer.get());
   this->decoder = std::make_unique<DecoderThread>(this->logger, this->segmentBuffer.get());
 
-  connect(this->segmentBuffer.get(),
-          &SegmentBuffer::startNextDownload,
-          this->downloader.get(),
-          &FileDownloader::downloadNextFile);
   connect(this->downloader.get(),
           &FileDownloader::downloadOfSegmentFinished,
-          this->segmentBuffer.get(),
-          &SegmentBuffer::onDownloadOfSegmentFinished);
-  connect(this->downloader.get(),
-          &FileDownloader::downloadOfFirstSPSSegmentFinished,
-          this->decoder.get(),
-          &DecoderThread::onDownloadOfFirstSPSSegmentFinished);
+          this,
+          &PlaybackController::downloadOfSegmentFinished);
+  connect(this->segmentBuffer.get(),
+          &SegmentBuffer::segmentRemovedFromBuffer,
+          this,
+          &PlaybackController::fillDownloadQueue);
 
   this->logger->addMessage("Playback Controller initialized", LoggingPriority::Info);
 }
@@ -82,7 +78,7 @@ bool PlaybackController::openJsonManifestFile(QString jsonManifestFile)
   auto success       = this->manifestFile->openJsonManifestFile(jsonManifestFile);
   if (success)
   {
-    this->downloader->activateManifest(this->manifestFile.get());
+    this->activateManifest();
     this->decoder->setOpenGopAdaptiveResolutionChange(
         this->manifestFile->isopenGopAdaptiveResolutionChange());
   }
@@ -95,7 +91,7 @@ bool PlaybackController::openPredefinedManifest(unsigned predefinedManifestID)
   auto success       = this->manifestFile->openPredefinedManifest(predefinedManifestID);
   if (success)
   {
-    this->downloader->activateManifest(this->manifestFile.get());
+    this->activateManifest();
     this->decoder->setOpenGopAdaptiveResolutionChange(
         this->manifestFile->isopenGopAdaptiveResolutionChange());
   }
@@ -121,4 +117,40 @@ QString PlaybackController::getStatus()
   status += "Decoder: " + this->decoder->getStatus() + "\n";
   status += "Conversion: " + this->conversion->getStatus() + "\n";
   return status;
+}
+
+void PlaybackController::activateManifest()
+{
+  if (this->manifestFile->isopenGopAdaptiveResolutionChange())
+  {
+    this->highestRenditionFirstSegment = std::make_unique<Segment>();
+    this->highestRenditionFirstSegment->segmentInfo =
+        this->manifestFile->getSegmentSPSHighestRendition();
+    this->downloader->addFileToDownloadQueue(this->highestRenditionFirstSegment.get());
+  }
+  this->fillDownloadQueue();
+}
+
+void PlaybackController::downloadOfSegmentFinished()
+{
+  if (this->highestRenditionFirstSegment)
+  {
+    if (this->highestRenditionFirstSegment->compressedData.isEmpty())
+      this->logger->addMessage("Recieved no data for highest rendition segment",
+                               LoggingPriority::Error);
+    this->highestRenditionFirstSegment.reset();
+  }
+  else
+    this->segmentBuffer->onDownloadOfSegmentFinished();
+}
+
+void PlaybackController::fillDownloadQueue()
+{
+  while (this->segmentBuffer->getNrOfBufferedSegments() <
+         this->manifestFile->getMaxSegmentBufferSize())
+  {
+    auto segment         = this->segmentBuffer->getNextDownloadSegment();
+    segment->segmentInfo = this->manifestFile->getNextSegmentInfo();
+    this->downloader->addFileToDownloadQueue(segment);
+  }
 }

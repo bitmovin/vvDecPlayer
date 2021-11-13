@@ -193,7 +193,7 @@ void ViewWidget::drawRenditionInfo(QPainter &painter)
 
   auto renditions               = manifest->getRenditionInfos();
   auto currentTargetRendition   = manifest->getCurrentRencodition();
-  auto currentPlaybackRendition = this->curFrame.segment->playbackInfo.rendition;
+  auto currentPlaybackRendition = this->curFrame.segment->segmentInfo.rendition;
 
   const auto arrawText     = "-->";
   const auto arrowTextSize = QFontMetrics(painter.font()).size(0, arrawText);

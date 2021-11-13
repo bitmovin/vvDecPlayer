@@ -103,8 +103,8 @@ SegmentBuffer::getBufferStatusForRender(Frame *curPlaybackFrame)
     segmentInfo.downloadProgress = segment->downloadProgress;
     segmentInfo.sizeInBytes      = segment->compressedSizeBytes;
     segmentInfo.nrFrames         = segment->nrFrames;
-    segmentInfo.segmentNumber    = segment->playbackInfo.segmentNumber;
-    segmentInfo.renditionNumber  = segment->playbackInfo.rendition;
+    segmentInfo.segmentNumber    = segment->segmentInfo.segmentNumber;
+    segmentInfo.renditionNumber  = segment->segmentInfo.rendition;
     unsigned frameCounter        = 0;
     for (auto &frame : segment->frames)
     {
@@ -121,6 +121,8 @@ SegmentBuffer::getBufferStatusForRender(Frame *curPlaybackFrame)
   return states;
 }
 
+size_t SegmentBuffer::getNrOfBufferedSegments() { return this->segments.size(); }
+
 Segment *SegmentBuffer::getNextDownloadSegment()
 {
   DEBUG("SegmentBuffer: Get next segment");
@@ -132,7 +134,7 @@ Segment *SegmentBuffer::getNextDownloadSegment()
   }
 
   if (this->segmentRecycleBin.empty())
-    this->segments.emplace_back();
+    this->segments.emplace_back(std::make_unique<Segment>());
   else
   {
     this->segments.push_back(std::move(this->segmentRecycleBin.front()));
@@ -147,7 +149,7 @@ Frame *SegmentBuffer::addNewFrameToSegment(Segment *segment)
   std::shared_lock lk(this->segmentQueueMutex);
 
   if (this->frameRecycleBin.empty())
-    segment->frames.emplace_back();
+    segment->frames.emplace_back(std::make_unique<Frame>());
   else
   {
     segment->frames.push_back(std::move(this->frameRecycleBin.front()));
@@ -158,11 +160,7 @@ Frame *SegmentBuffer::addNewFrameToSegment(Segment *segment)
   return segment->frames.back().get();
 }
 
-void SegmentBuffer::onDownloadOfSegmentFinished()
-{
-  this->eventCV.notify_all();
-  this->tryToStartNextDownload();
-}
+void SegmentBuffer::onDownloadOfSegmentFinished() { this->eventCV.notify_all(); }
 
 Segment *SegmentBuffer::getFirstSegmentToParse()
 {
@@ -370,19 +368,12 @@ SegmentBuffer::FrameIterator SegmentBuffer::getNextFrameToDisplay(FrameIterator 
     assert(frameIt.segment == this->segments.front().get());
     this->recycleSegmentAndFrames(std::move(this->segments.front()));
     this->segments.pop_front();
-    this->tryToStartNextDownload();
+    emit segmentRemovedFromBuffer();
   }
 
   DEBUG("Next frame to display ready.");
   this->eventCV.notify_all();
   return nextFrame;
-}
-
-void SegmentBuffer::tryToStartNextDownload()
-{
-  constexpr auto MAX_DOWNLOADED_SEGMENTS_IN_QUEUE = 5;
-  if (this->segments.size() < MAX_DOWNLOADED_SEGMENTS_IN_QUEUE)
-    emit startNextDownload();
 }
 
 void SegmentBuffer::recycleSegmentAndFrames(std::unique_ptr<Segment> &&segment)

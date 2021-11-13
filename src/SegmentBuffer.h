@@ -79,6 +79,8 @@ public:
   };
   std::vector<SegmentRenderInfo> getBufferStatusForRender(Frame *curPlaybackFrame);
 
+  size_t getNrOfBufferedSegments();
+
   // These provide new (or maybe recycled) segments/frames. These do not block.
   Segment *getNextDownloadSegment();
   Frame *  addNewFrameToSegment(Segment *segment);
@@ -102,15 +104,12 @@ public:
   FrameIterator getFirstFrameToDisplay();
   FrameIterator getNextFrameToDisplay(FrameIterator frameIt);
 
-signals:
-  void startNextDownload();
-
-public slots:
   void onDownloadOfSegmentFinished();
 
-private:
-  void tryToStartNextDownload();
+signals:
+  void segmentRemovedFromBuffer();
 
+private:
   std::deque<std::unique_ptr<Segment>> segments;
 
   std::condition_variable_any eventCV;

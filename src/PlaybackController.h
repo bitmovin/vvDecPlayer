@@ -58,7 +58,13 @@ public:
   SegmentBuffer *getSegmentBuffer() { return this->segmentBuffer.get(); }
   ManifestFile * getManifest() { return this->manifestFile.get(); }
 
+private slots:
+  void downloadOfSegmentFinished();
+  void fillDownloadQueue();
+
 private:
+  void activateManifest();
+
   ILogger *logger{};
 
   std::unique_ptr<FileDownloader>        downloader;
@@ -66,6 +72,8 @@ private:
   std::unique_ptr<FileParserThread>      parser;
   std::unique_ptr<FrameConversionThread> conversion;
   std::unique_ptr<SegmentBuffer>         segmentBuffer;
+
+  std::unique_ptr<Segment> highestRenditionFirstSegment;
 
   std::unique_ptr<ManifestFile> manifestFile;
 };

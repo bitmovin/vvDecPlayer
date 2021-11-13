@@ -32,12 +32,12 @@ SOFTWARE. */
 class Segment
 {
 public:
-  Segment() = default;
+  Segment()  = default;
   ~Segment() = default;
 
   void clear()
   {
-    this->playbackInfo        = {};
+    this->segmentInfo         = {};
     this->compressedSizeBytes = 0;
     this->downloadProgress    = 0.0;
     this->downloadFinished    = false;
@@ -46,14 +46,14 @@ public:
     this->frames.clear();
   }
 
-  struct PlaybackInfo
+  struct SegmentInfo
   {
     unsigned segmentNumber{};
     unsigned rendition{};
     QString  downloadUrl;
     double   fps{};
   };
-  PlaybackInfo playbackInfo{};
+  SegmentInfo segmentInfo{};
 
   QByteArray  compressedData;
   std::size_t compressedSizeBytes{0};

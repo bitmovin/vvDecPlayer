@@ -35,8 +35,11 @@ enum class FrameState
   Empty
 };
 
-struct Frame
+class Frame
 {
+public:
+  Frame() = default;
+
   void clear()
   {
     this->frameState        = FrameState::Empty;

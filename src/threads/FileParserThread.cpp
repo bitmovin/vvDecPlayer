@@ -114,7 +114,7 @@ void FileParserThread::runParser()
       {
         this->logger->addMessage(QString("Error parsing nal %1 in Segment %2")
                                      .arg(nalID)
-                                     .arg(segmentIt->playbackInfo.segmentNumber),
+                                     .arg(segmentIt->segmentInfo.segmentNumber),
                                  LoggingPriority::Error);
       }
 

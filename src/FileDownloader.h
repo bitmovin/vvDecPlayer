@@ -23,8 +23,6 @@ SOFTWARE. */
 
 #pragma once
 
-#include <ManifestFile.h>
-#include <SegmentBuffer.h>
 #include <common/ILogger.h>
 #include <common/Segment.h>
 #include <common/typedef.h>
@@ -39,56 +37,50 @@ SOFTWARE. */
 
 /* A background downloader for files.
  *
- * In a background thread it will always try to keep a certain number of files in a local
- * cache. When a download is done, we will provide a report on the download (e.g. start, end,
- * nrBytes). The DownloadFilePlanner can then take that data and add the next file to download to
- * the list.
+ * This class works async. You just push files to download into a queue and
+ * the downloader will signal every time a download is done.
  */
 class FileDownloader : public QObject
 {
   Q_OBJECT
 
 public:
-  FileDownloader(ILogger *logger, SegmentBuffer *segmentBuffer);
+  FileDownloader(ILogger *logger);
   ~FileDownloader() = default;
 
-  void activateManifest(ManifestFile *manifestFile);
-
   QString getStatus() const;
+  size_t  getQueueSize() const;
+
+  struct DownloadInfo
+  {
+  };
+
+public slots:
+  void addFileToDownloadQueue(Segment *segment);
 
 signals:
   void downloadOfSegmentFinished();
-  void downloadOfFirstSPSSegmentFinished(QByteArray segmentData);
 
-public slots:
-  void downloadNextFile();
-
+private slots:
   void replyFinished(QNetworkReply *reply);
   void updateDownloadProgress(int64_t val, int64_t max);
 
 private:
-  ILogger *      logger{};
-  SegmentBuffer *segmentBuffer{};
-  ManifestFile * manifestFile{};
+  ILogger *logger{};
 
   enum class State
   {
     Idle,
-    DownloadSegment,
-    DownloadHighestResolutionSPS
+    Downloading
   };
   State state{State::Idle};
-
-  enum class FileType
-  {
-    NextSegment,
-    HighestRepresentationSPS
-  };
-  void downloadFile(FileType fileType);
 
   Segment *currentSegment{};
 
   bool isLocalSource{false};
 
   QNetworkAccessManager networkManager;
+
+  std::queue<Segment *> downloadQueue;
+  void                  tryStartOfNextDownload();
 };

@@ -186,11 +186,11 @@ void DecoderThread::runDecoder()
           }
 
           DEBUG(QString("Got next segment Rendition %1 Segment %2")
-                    .arg(nextSegment->playbackInfo.rendition)
-                    .arg(nextSegment->playbackInfo.segmentNumber));
+                    .arg(nextSegment->segmentInfo.rendition)
+                    .arg(nextSegment->segmentInfo.segmentNumber));
 
           auto renditionSwitch =
-              nextSegment->playbackInfo.rendition != itSegmentData->playbackInfo.rendition;
+              nextSegment->segmentInfo.rendition != itSegmentData->segmentInfo.rendition;
 
           itSegmentData = nextSegment;
           nextSegmentFrames.push(nextSegment);
@@ -266,8 +266,8 @@ void DecoderThread::runDecoder()
                     .arg(frame->frameSize.width)
                     .arg(frame->frameSize.height)
                     .arg(currentFrameIdxInSegment)
-                    .arg(itSegmentFrames->playbackInfo.segmentNumber)
-                    .arg(itSegmentFrames->playbackInfo.rendition));
+                    .arg(itSegmentFrames->segmentInfo.segmentNumber)
+                    .arg(itSegmentFrames->segmentInfo.rendition));
           this->segmentBuffer->onFrameDecoded();
           currentFrameIdxInSegment++;
         }
@@ -277,8 +277,8 @@ void DecoderThread::runDecoder()
       {
         DEBUG("Decoding error");
         this->logger->addMessage(QString("Error decoding rend %1 seg %2 frame %3")
-                                     .arg(itSegmentData->playbackInfo.rendition)
-                                     .arg(itSegmentData->playbackInfo.segmentNumber)
+                                     .arg(itSegmentData->segmentInfo.rendition)
+                                     .arg(itSegmentData->segmentInfo.segmentNumber)
                                      .arg(currentFrameIdxInSegment),
                                  LoggingPriority::Error);
         break;
