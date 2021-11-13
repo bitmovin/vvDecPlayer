@@ -172,18 +172,10 @@ void decoderVVDec::resolveLibraryFunctionPointers()
     return;
   if (!resolve(this->lib.vvdec_accessUnit_alloc_payload, "vvdec_accessUnit_alloc_payload"))
     return;
-  if (!resolve(this->lib.vvdec_accessUnit_free_payload, "vvdec_accessUnit_free_payload"))
-    return;
   if (!resolve(this->lib.vvdec_accessUnit_default, "vvdec_accessUnit_default"))
     return;
 
   if (!resolve(this->lib.vvdec_params_default, "vvdec_params_default"))
-    return;
-  if (!resolve(this->lib.vvdec_params_alloc, "vvdec_params_alloc"))
-    return;
-  if (!resolve(this->lib.vvdec_params_alloc, "vvdec_params_alloc"))
-    return;
-  if (!resolve(this->lib.vvdec_params_free, "vvdec_params_free"))
     return;
 
   if (!resolve(this->lib.vvdec_decoder_open, "vvdec_decoder_open"))
@@ -450,11 +442,14 @@ QByteArray decoderVVDec::getRawFrameData()
     return {};
   }
 
-  if (this->currentOutputBuffer.isEmpty())
+  if (this->currentFrame && this->currentOutputBuffer.isEmpty())
   {
     // Put image data into buffer
     copyImgToByteArray(this->currentOutputBuffer);
     DEBUG_vvdec("decoderVVDec::getRawFrameData copied frame to buffer");
+
+    this->lib.vvdec_frame_unref(this->decoder, this->currentFrame);
+    this->currentFrame = nullptr;
   }
 
   return currentOutputBuffer;
