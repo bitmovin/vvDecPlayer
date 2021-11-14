@@ -36,7 +36,6 @@ public:
   ManifestFile(ILogger *logger);
 
   bool openJsonManifestFile(QString filename);
-
   bool openPredefinedManifest(unsigned predefinedManifestID);
 
   void     gotoSegment(unsigned segmentNumber) { this->currentSegment = segmentNumber; }

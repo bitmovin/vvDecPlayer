@@ -43,6 +43,12 @@ PlaybackController::~PlaybackController()
 
 void PlaybackController::reset()
 {
+  if (this->decoder)
+    this->decoder->abort();
+  if (this->parser)
+    this->parser->abort();
+  if (this->conversion)
+    this->conversion->abort();
   if (this->segmentBuffer)
     this->segmentBuffer->abort();
   this->downloader.reset(nullptr);
