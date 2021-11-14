@@ -59,6 +59,7 @@ private slots:
   void toggleShowDebug(bool checked);
   void toggleShowProgressGraph(bool checked);
   void onSelectVVDeCLibrary();
+  void onSelectFFMpegeLibrary();
   void onGotoSegmentNumber();
   void onIncreaseRendition();
   void onDecreaseRendition();

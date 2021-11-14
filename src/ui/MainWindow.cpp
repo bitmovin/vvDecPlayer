@@ -25,14 +25,13 @@ SOFTWARE. */
 
 #include <common/typedef.h>
 #include <decoder/decoderVVDec.h>
+#include <decoder/ffmpeg/FFMpegLibrariesHandling.h>
 
+#include <QDirIterator>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QKeyEvent>
 #include <QMessageBox>
-
-constexpr auto DEFAULT_SEGMENT_PATTERN = "segment-%i.vvc";
-constexpr auto SINTEL_SEGMENT_NR       = 887;
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
@@ -208,6 +207,8 @@ void MainWindow::createMenusAndActions()
 
   auto settingsMenu = this->ui.menuBar->addMenu("Settings");
   settingsMenu->addAction("Select VVdeC library ...", this, &MainWindow::onSelectVVDeCLibrary);
+  settingsMenu->addAction(
+      "Select FFMpeg library folder ...", this, &MainWindow::onSelectFFMpegeLibrary);
 }
 
 void MainWindow::openJsonManifestFile()
@@ -223,7 +224,7 @@ void MainWindow::openJsonManifestFile()
 
     if (this->playbackController->openJsonManifestFile(files[0]))
     {
-      auto manifest = this->playbackController->getManifest();
+      auto manifest      = this->playbackController->getManifest();
       auto renditionInfo = manifest->getCurrentRenditionInfo();
       this->ui.viewWidget->setPlaybackFps(renditionInfo->fps);
       this->ui.viewWidget->setPlotMaxBitrate(manifest->getPlotMaxBitrate());
@@ -263,8 +264,93 @@ void MainWindow::onSelectVVDeCLibrary()
 
     QSettings settings;
     settings.setValue("libVVDecFile", file);
+    QMessageBox::information(this, "Loading libraries", "Successfully set path to decoder library.");
 
     this->playbackController->reset();
+  }
+}
+
+void MainWindow::onSelectFFMpegeLibrary()
+{
+  QFileDialog fileDialog(this, "Select FFMpeg decoder library folder");
+  fileDialog.setDirectory(QDir::current());
+  fileDialog.setFileMode(QFileDialog::Directory);
+
+  if (fileDialog.exec())
+  {
+    auto dir = fileDialog.directory();
+    dir.setFilter(QDir::Files);
+    if (!dir.exists())
+      return;
+
+    if (is_Q_OS_LINUX)
+      dir.setNameFilters({"*.so"});
+    if (is_Q_OS_MAC)
+      dir.setNameFilters({"*.dylib"});
+    if (is_Q_OS_WIN)
+      dir.setNameFilters({"*.dll"});
+
+    QDirIterator libIterator(dir);
+    QString      avCodecLib, avFormatLib, avUtilLib, swResampleLib;
+    while (libIterator.hasNext())
+    {
+      QFileInfo fileInfo(libIterator.next());
+      if (fileInfo.baseName().startsWith("avcodec"))
+        avCodecLib = fileInfo.absoluteFilePath();
+      if (fileInfo.baseName().startsWith("avformat"))
+        avFormatLib = fileInfo.absoluteFilePath();
+      if (fileInfo.baseName().startsWith("avutil"))
+        avUtilLib = fileInfo.absoluteFilePath();
+      if (fileInfo.baseName().startsWith("swresample"))
+        swResampleLib = fileInfo.absoluteFilePath();
+    }
+
+    if (avCodecLib.isEmpty() || avFormatLib.isEmpty() || avUtilLib.isEmpty() ||
+        swResampleLib.isEmpty())
+    {
+      QMessageBox::critical(
+          this,
+          "Error in file selection",
+          "Please select the four FFmpeg files AVCodec, AVFormat, AVUtil and SWresample.");
+      return;
+    }
+
+    QStringList logList;
+    if (!FFmpegVersionHandler::checkLibraryFiles(
+            avCodecLib, avFormatLib, avUtilLib, swResampleLib, logList))
+    {
+      QMessageBox::StandardButton b = QMessageBox::question(
+          this,
+          "Error opening the library",
+          "The selected file does not appear to be a usable ffmpeg avFormat library. \nWe have "
+          "collected a more detailed log. Do you want to save it to disk?");
+      if (b == QMessageBox::Yes)
+      {
+        const auto filePath =
+            QFileDialog::getSaveFileName(this, "Select a destination for the log file.");
+        QFile logFile(filePath);
+        logFile.open(QIODevice::WriteOnly);
+        if (logFile.isOpen())
+        {
+          QTextStream outputStream(&logFile);
+          for (auto l : logList)
+            outputStream << l << "\n";
+        }
+        else
+          QMessageBox::information(
+              this, "Error opening file", "There was an error opening the log file " + filePath);
+      }
+    }
+    else
+    {
+      QSettings settings;
+      settings.setValue("ffmpeg_avcodec", avCodecLib);
+      settings.setValue("ffmpeg_avFormatLib", avFormatLib);
+      settings.setValue("ffmpeg_avUtilLib", avUtilLib);
+      settings.setValue("ffmpeg_swResampleLib", swResampleLib);
+      QMessageBox::information(this, "Loading libraries", "Successfully set path to decoder library.");
+      this->playbackController->reset();
+    }
   }
 }
 
@@ -275,7 +361,7 @@ void MainWindow::openFixedUrl()
   {
     auto id = action->data().toInt();
     this->playbackController->openPredefinedManifest(id);
-    auto manifest = this->playbackController->getManifest();
+    auto manifest      = this->playbackController->getManifest();
     auto renditionInfo = manifest->getCurrentRenditionInfo();
     this->ui.viewWidget->setPlaybackFps(renditionInfo->fps);
     this->ui.viewWidget->setPlotMaxBitrate(manifest->getPlotMaxBitrate());
