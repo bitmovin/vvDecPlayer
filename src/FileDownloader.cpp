@@ -99,6 +99,7 @@ void FileDownloader::replyFinished(QNetworkReply *reply)
     emit downloadOfSegmentFinished();
   }
 
+  this->state = State::Idle;
   this->tryStartOfNextDownload();
 }
 
@@ -130,6 +131,9 @@ void FileDownloader::tryStartOfNextDownload()
     this->state = State::Idle;
     return;
   }
+
+  if (this->state == State::Downloading)
+    return;
 
   this->currentSegment = this->downloadQueue.front();
   this->downloadQueue.pop();
