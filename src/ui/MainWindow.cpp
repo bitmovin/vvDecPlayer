@@ -127,11 +127,12 @@ void MainWindow::createMenusAndActions()
   fileMenu->addSeparator();
 
   auto presetURLs = fileMenu->addMenu("Bitmovin Streams");
-  for (int i = 0; i < 1; i++)
+  QStringList urlNames = QStringList() << "Coffee Run" << "Sprite Fright";
+  for (int i = 0; i < 2; i++)
   {
     this->fixedURLActions[i] = new QAction(this);
-    this->fixedURLActions[i]->setText("Sintel AWS S3 720p");
-    this->fixedURLActions[i]->setData(0);
+    this->fixedURLActions[i]->setText(urlNames[i]);
+    this->fixedURLActions[i]->setData(i);
     connect(this->fixedURLActions[i].data(), &QAction::triggered, this, &MainWindow::openFixedUrl);
     presetURLs->addAction(this->fixedURLActions[i]);
   }

@@ -65,19 +65,75 @@ Segment::SegmentInfo createSegmentInfoForRendition(const ManifestFile::Rendition
   return segmentInfo;
 }
 
-const auto PREDEFINED_MANIFEST_0 = QByteArray(
-    R"--json--({
-    "Name": "Sintel 720p only",
-    "NrSegments": 888,
-    "Renditions": [
+const auto MANIFEST_COFFEERUN = QByteArray(
+    R"--json--(
       {
-        "Name": "Remote Sintel AWS S3 720p",
-        "Resolution": "1696x720",
-        "Fps": 24,
-        "Url": "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/Sintel720p/segment-%i.vvc"
+        "Name": "Coffee Run",
+        "NrSegments": 184,
+        "PlotMaxBitrate": 400000,
+        "Renditions": [
+          {
+            "Name": "430p",
+            "Resolution": "1026x430",
+            "Fps": 24,
+            "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/CoffeeRun/video/430-600000/segment-%i.vvc"
+          },
+          {
+            "Name": "536p",
+            "Resolution": "1280x536",
+            "Fps": 24,
+            "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/CoffeeRun/video/536-900000/segment-%i.vvc"
+          },
+          {
+            "Name": "640p",
+            "Resolution": "1582x640",
+            "Fps": 24,
+            "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/CoffeeRun/video/640-1200000/segment-%i.vvc"
+          },
+          {
+            "Name": "858p",
+            "Resolution": "2048x858",
+            "Fps": 24,
+            "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/CoffeeRun/video/858-2000000/segment-%i.vvc"
+          }
+        ]
       }
-    ]
-  })--json--");
+      )--json--");
+
+const auto MANIFEST_SPRITEFRIGHT = QByteArray(
+    R"--json--(
+      {
+        "Name": "Sprite Fright",
+        "NrSegments": 629,
+        "PlotMaxBitrate": 400000,
+        "Renditions": [
+          {
+            "Name": "430p",
+            "Resolution": "1026x430",
+            "Fps": 24,
+            "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/SpriteFright/video/430-600000/segment-%i.vvc"
+          },
+          {
+            "Name": "536p",
+            "Resolution": "1280x536",
+            "Fps": 24,
+            "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/SpriteFright/video/536-900000/segment-%i.vvc"
+          },
+          {
+            "Name": "640p",
+            "Resolution": "1582x640",
+            "Fps": 24,
+            "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/SpriteFright/video/640-1200000/segment-%i.vvc"
+          },
+          {
+            "Name": "858p",
+            "Resolution": "2048x858",
+            "Fps": 24,
+            "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/SpriteFright/video/858-2000000/segment-%i.vvc"
+          }
+        ]
+      }
+      )--json--");
 
 } // namespace
 
@@ -86,9 +142,9 @@ ManifestFile::ManifestFile(ILogger *logger) { this->logger = logger; }
 bool ManifestFile::openPredefinedManifest(unsigned predefinedManifestID)
 {
   if (predefinedManifestID == 0)
-  {
-    return this->openFromData(PREDEFINED_MANIFEST_0);
-  }
+    return this->openFromData(MANIFEST_COFFEERUN);
+  if (predefinedManifestID == 1)
+    return this->openFromData(MANIFEST_SPRITEFRIGHT);
   return false;
 }
 
@@ -176,6 +232,10 @@ bool ManifestFile::openFromData(QByteArray data)
                              LoggingPriority::Error);
     return false;
   }
+
+  if (this->renditions.size() > 0)
+    this->currentRendition = unsigned(this->renditions.size() - 1);
+
   return true;
 }
 
