@@ -23,6 +23,8 @@ SOFTWARE. */
 
 #include "ViewWidget.h"
 
+#include <QException>
+#include <QOpenGLShader>
 #include <QPainter>
 #include <QPalette>
 #include <QRectF>
@@ -42,10 +44,19 @@ namespace
 
 constexpr auto    INFO_MESSAGE_TIMEOUT        = std::chrono::seconds(10);
 static const auto SEMGENT_LENGTH_FRAMES_GUESS = 24u;
+constexpr auto    ATTRIB_VERTEX               = 0;
+constexpr auto    ATTRIB_TEXTURE              = 1;
+
+class OpenGlException : public QException
+{
+public:
+  void             raise() const { throw *this; }
+  OpenGlException *clone() const { return new OpenGlException(*this); }
+};
 
 } // namespace
 
-ViewWidget::ViewWidget(QWidget *parent) : QWidget(parent)
+ViewWidget::ViewWidget(QWidget *parent) : QOpenGLWidget(parent)
 {
   auto pal = this->palette();
   pal.setColor(QPalette::Window, Qt::black);
@@ -70,19 +81,118 @@ void ViewWidget::addMessage(QString message, LoggingPriority priority)
   this->messages.push_back(msg);
 }
 
-void ViewWidget::paintEvent(QPaintEvent *)
+// void ViewWidget::paintEvent(QPaintEvent *)
+// {
+//   QPainter painter(this);
+//   painter.setRenderHint(QPainter::RenderHint::SmoothPixmapTransform);
+
+//   DEBUG("Paint event");
+
+//   this->drawCurrentFrame(painter);
+//   this->drawAndUpdateMessages(painter);
+//   this->drawFPSAndStatusText(painter);
+//   this->drawRenditionInfo(painter);
+//   this->drawProgressGraph(painter);
+// }
+
+void ViewWidget::initializeGL()
 {
-  QPainter painter(this);
-  painter.setRenderHint(QPainter::RenderHint::SmoothPixmapTransform);
+  initializeOpenGLFunctions();
+  glEnable(GL_DEPTH_TEST);
 
-  DEBUG("Paint event");
+  this->vertexShader = std::make_unique<QOpenGLShader>(QOpenGLShader::Vertex, this);
 
-  this->drawCurrentFrame(painter);
-  this->drawAndUpdateMessages(painter);
-  this->drawFPSAndStatusText(painter);
-  this->drawRenditionInfo(painter);
-  this->drawProgressGraph(painter);
+  const char *vertexShaderSource = "attribute vec4 vertexIn; \
+        attribute vec2 textureIn; \
+        varying vec2 textureOut;  \
+        void main(void)           \
+        {                         \
+            gl_Position = vertexIn; \
+            textureOut = textureIn; \
+        }";
+
+  if (!this->vertexShader->compileSourceCode(vertexShaderSource))
+    throw OpenGlException();
+
+  this->fragmentShader             = std::make_unique<QOpenGLShader>(QOpenGLShader::Fragment, this);
+  const char *fragmentShaderSource = "varying vec2 textureOut; \
+    uniform sampler2D tex_y; \
+    uniform sampler2D tex_u; \
+    uniform sampler2D tex_v; \
+    void main(void) \
+    { \
+        vec3 yuv; \
+        vec3 rgb; \
+        yuv.x = texture2D(tex_y, textureOut).r; \
+        yuv.y = texture2D(tex_u, textureOut).r - 0.5; \
+        yuv.z = texture2D(tex_v, textureOut).r - 0.5; \
+        rgb = mat3( 1,       1,         1, \
+                    0,       -0.39465,  2.03211, \
+                    1.13983, -0.58060,  0) * yuv; \
+        gl_FragColor = vec4(rgb, 1); \
+    }";
+  if (!this->fragmentShader->compileSourceCode(fragmentShaderSource))
+    throw OpenGlException();
+
+  this->shaderProgram = std::make_unique<QOpenGLShaderProgram>(this);
+  // TODO: do addShaderFromSourceCode
+  this->shaderProgram->addShader(this->fragmentShader.get());
+  this->shaderProgram->addShader(this->vertexShader.get());
+  this->shaderProgram->bindAttributeLocation("vertexIn", ATTRIB_VERTEX);
+  this->shaderProgram->bindAttributeLocation("textureIn", ATTRIB_TEXTURE);
+
+  if (!this->shaderProgram->link() || !this->shaderProgram->bind())
+    throw OpenGlException();
+
+  this->textureUniformY = this->shaderProgram->uniformLocation("tex_y");
+  this->textureUniformU = this->shaderProgram->uniformLocation("tex_u");
+  this->textureUniformV = this->shaderProgram->uniformLocation("tex_v");
+
+  static const GLfloat vertexVertices[] = {
+      -1.0f,
+      -1.0f,
+      1.0f,
+      -1.0f,
+      -1.0f,
+      1.0f,
+      1.0f,
+      1.0f,
+  };
+
+  static const GLfloat textureVertices[] = {
+      0.0f,
+      1.0f,
+      1.0f,
+      1.0f,
+      0.0f,
+      0.0f,
+      1.0f,
+      0.0f,
+  };
+
+  glVertexAttribPointer(ATTRIB_VERTEX, 2, GL_FLOAT, 0, 0, vertexVertices);
+  glVertexAttribPointer(ATTRIB_TEXTURE, 2, GL_FLOAT, 0, 0, textureVertices);
+  glEnableVertexAttribArray(ATTRIB_VERTEX);
+  glEnableVertexAttribArray(ATTRIB_TEXTURE);
+
+  // Create y, u, v texture objects respectively
+  this->textureY = std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target2D);
+  this->textureU = std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target2D);
+  this->textureV = std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target2D);
+  this->textureY->create();
+  this->textureU->create();
+  this->textureV->create();
+
+  this->textureIdY = this->textureY->textureId();
+  this->textureIdU = this->textureU->textureId();
+  this->textureIdV = this->textureV->textureId();
+
+  glClearColor(0.3, 0.3, 0.3, 0.0); // set the background color
 }
+
+void ViewWidget::resizeGL(int w, int h) {}
+
+void ViewWidget::paintGL() {}
 
 void ViewWidget::drawCurrentFrame(QPainter &painter)
 {

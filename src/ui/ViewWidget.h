@@ -28,12 +28,16 @@ SOFTWARE. */
 
 #include <QBasicTimer>
 #include <QImage>
+#include <QOpenGLFunctions>
+#include <QOpenGLShader>
+#include <QOpenGLTexture>
+#include <QOpenGLWidget>
 #include <QTime>
 #include <QWidget>
 #include <chrono>
 #include <mutex>
 
-class ViewWidget : public QWidget, public ILogger
+class ViewWidget : public QOpenGLWidget, public QOpenGLFunctions, public ILogger
 {
   Q_OBJECT;
 
@@ -53,9 +57,12 @@ public:
   void onPlayPause();
   void onStep();
 
-private:
-  virtual void paintEvent(QPaintEvent *event) override;
+protected:
+  void initializeGL() override;
+  void resizeGL(int w, int h) override;
+  void paintGL() override;
 
+private:
   struct ViewWidgetMessage
   {
     std::chrono::time_point<std::chrono::steady_clock> timeAdded;
@@ -92,4 +99,17 @@ private:
   bool scaleVideo{true};
   bool showDebugInfo{false};
   bool showProgressGraph{false};
+
+  std::unique_ptr<QOpenGLShader>        vertexShader;
+  std::unique_ptr<QOpenGLShader>        fragmentShader;
+  std::unique_ptr<QOpenGLShaderProgram> shaderProgram;
+  int                                   textureUniformY{};
+  int                                   textureUniformU{};
+  int                                   textureUniformV{};
+  std::unique_ptr<QOpenGLTexture>       textureY;
+  std::unique_ptr<QOpenGLTexture>       textureU;
+  std::unique_ptr<QOpenGLTexture>       textureV;
+  GLuint                                textureIdY{};
+  GLuint                                textureIdU{};
+  GLuint                                textureIdV{};
 };

@@ -78,7 +78,7 @@ void FileDownloader::replyFinished(QNetworkReply *reply)
   if (reply->error() != QNetworkReply::NoError)
   {
     DEBUG("Error " << reply->errorString());
-    this->logger->addMessage(QString("Download Error: %s").arg(reply->errorString()),
+    this->logger->addMessage(QString("Download Error: %1").arg(reply->errorString()),
                              LoggingPriority::Error);
     return;
   }
