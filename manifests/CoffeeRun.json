@@ -1,0 +1,31 @@
+{
+  "Name": "Coffee Run",
+  "NrSegments": 184,
+  "PlotMaxBitrate": 400000,
+  "Renditions": [
+    {
+      "Name": "430p",
+      "Resolution": "1026x430",
+      "Fps": 24,
+      "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/CoffeeRun/video/430-600000/segment-%i.vvc"
+    },
+    {
+      "Name": "536p",
+      "Resolution": "1280x536",
+      "Fps": 24,
+      "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/CoffeeRun/video/536-900000/segment-%i.vvc"
+    },
+    {
+      "Name": "640p",
+      "Resolution": "1582x640",
+      "Fps": 24,
+      "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/CoffeeRun/video/640-1200000/segment-%i.vvc"
+    },
+    {
+      "Name": "858p",
+      "Resolution": "2048x858",
+      "Fps": 24,
+      "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/CoffeeRun/video/858-2000000/segment-%i.vvc"
+    }
+  ]
+}

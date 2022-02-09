@@ -77,7 +77,7 @@ private:
   QAction                      actionShowProgressGraph;
   QScopedPointer<QActionGroup> actionGroup;
 
-  QPointer<QAction> fixedURLActions[1];
+  QPointer<QAction> fixedURLActions[2];
 
   bool wasMaximizedBeforeFullScreen{false};
 
