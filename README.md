@@ -48,40 +48,39 @@ There are a bunch of keyboard shortcuts to make your life easier. Most of them c
 
 ## JSON Manifest Files
 
-The player will need to know what to play from what source. For this we use a small JSON based manifest file that describes where all the VVC segments can be downloaded. Here is an example. 
+The player will need to know what to play from what source. For this we use a small JSON based manifest file that describes where all the VVC segments can be downloaded. Here is an example. There are also some hard coded manifests which can be directly opened from "```File -> Bitmovin Streams```".
 
 📝 Try it out! Save this to a JSON file and open it.
 
 ```
 {
-  "Name": "Sintel Bitmovin S3",
-  "NrSegments": 53,
+  "Name": "Sprite Fright",
+  "NrSegments": 629,
   "PlotMaxBitrate": 400000,
   "Renditions": [
     {
-      "Name": "360p",
-      "Resolution": "640x360",
+      "Name": "430p",
+      "Resolution": "1026x430",
       "Fps": 24,
-      "Url": "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/SintelTrailer1080p/360-200000/segment-%i.vvc"
+      "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/SpriteFright/video/430-600000/segment-%i.vvc"
     },
     {
-      "Name": "576p",
-      "Resolution": "1024x576",
+      "Name": "536p",
+      "Resolution": "1280x536",
       "Fps": 24,
-      "Url": "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/SintelTrailer1080p/576-400000/segment-%i.vvc"
+      "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/SpriteFright/video/536-900000/segment-%i.vvc"
     },
     {
-      "Name": "720p",
-      "Resolution": "1280x720",
+      "Name": "640p",
+      "Resolution": "1582x640",
       "Fps": 24,
-	  "Url": "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/SintelTrailer1080p/720-750000/segment-%i.vvc"
+      "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/SpriteFright/video/640-1200000/segment-%i.vvc"
     },
     {
-      "Name": "1080p",
-      "Resolution": "1920x1080",
+      "Name": "858p",
+      "Resolution": "2048x858",
       "Fps": 24,
-      
-	  "Url": "https://bitmovin-api-eu-west1-ci-input.s3.amazonaws.com/feldmann/VVCDemo/SintelTrailer1080p/1080-1500000/segment-%i.vvc"
+      "Url": "https://d2g8oy21og5mdp.cloudfront.net/vvcBlogPostDemo/SpriteFright/video/858-2000000/segment-%i.vvc"
     }
   ]
 }
