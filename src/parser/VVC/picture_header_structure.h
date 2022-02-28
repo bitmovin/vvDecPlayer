@@ -132,6 +132,7 @@ public:
 
   unsigned PicOrderCntMsb{};
   unsigned PicOrderCntVal{};
+  unsigned globalPOC{};
 };
 
 } // namespace parser::vvc

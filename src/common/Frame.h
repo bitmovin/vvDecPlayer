@@ -26,7 +26,7 @@ SOFTWARE. */
 #include "typedef.h"
 #include <QByteArray>
 #include <QImage>
-#include <YUV/YUVPixelFormat.h>
+#include <video/PixelFormatYUV.h>
 
 enum class FrameState
 {
@@ -53,7 +53,7 @@ public:
 
   QByteArray                    rawYUVData;
   Size                          frameSize{};
-  YUV_Internals::YUVPixelFormat pixelFormat{};
+  video::yuv::PixelFormatYUV pixelFormat{};
 
   size_t   nrBytesCompressed{0};
   unsigned poc{0};

@@ -28,10 +28,8 @@ SOFTWARE. */
 #include <optional>
 #include <set>
 
-#include "YUV/YUVPixelFormat.h"
 #include "common/TreeItem.h"
-
-using namespace YUV_Internals;
+#include <video/PixelFormatYUV.h>
 
 namespace parser
 {
@@ -87,8 +85,8 @@ public:
                                          std::optional<pairUint64>   nalStartEndPosFile = {}) = 0;
 
   // Get some format properties
-  virtual Size           getSequenceSizeSamples() const = 0;
-  virtual YUVPixelFormat getPixelFormat() const         = 0;
+  virtual Size                       getSequenceSizeSamples() const = 0;
+  virtual video::yuv::PixelFormatYUV getPixelFormat() const         = 0;
 
   // When we want to seek to a specific frame number, this function return the parameter sets that
   // you need to start decoding (without start codes). If file positions were set for the NAL units,

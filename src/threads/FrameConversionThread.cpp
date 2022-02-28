@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 
 #include "FrameConversionThread.h"
-#include <YUV/YUVConversion.h>
+#include <video/YUVConversion.h>
 
 #define DEBUG_CONVERSION 0
 #if DEBUG_CONVERSION

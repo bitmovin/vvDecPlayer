@@ -25,8 +25,6 @@ SOFTWARE. */
 
 #include <assert.h>
 
-using namespace YUV_Internals;
-
 // Restrict is basically a promise to the compiler that for the scope of the pointer, the target of
 // the pointer will only be accessed through that pointer (and pointers copied from it).
 #if __STDC__ != 1
@@ -42,6 +40,12 @@ using namespace YUV_Internals;
 #endif
 #endif
 #endif
+
+using ChromaInterpolation = video::yuv::ChromaInterpolation;
+using PixelFormatYUV      = video::yuv::PixelFormatYUV;
+using ColorConversion     = video::yuv::ColorConversion;
+using PlaneOrder          = video::yuv::PlaneOrder;
+using Subsampling         = video::yuv::Subsampling;
 
 namespace
 {
@@ -514,7 +518,7 @@ template <int bitDepth>
 bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
                         unsigned char *      targetBuffer,
                         const Size           size,
-                        const YUVPixelFormat format)
+                        const PixelFormatYUV format)
 {
   static_assert(bitDepth == 8 || bitDepth == 10);
 
@@ -552,7 +556,7 @@ bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
   const bool uPplaneFirst =
       (format.getPlaneOrder() == PlaneOrder::YUV ||
        format.getPlaneOrder() == PlaneOrder::YUVA); // Is the U plane the first or the second?
-  const auto *restrict srcY = (InValueType*)sourceBuffer.data();
+  const auto *restrict srcY = (InValueType *)sourceBuffer.data();
   const auto *restrict srcU =
       uPplaneFirst ? srcY + componentLenghtY : srcY + componentLenghtY + componentLengthUV;
   const auto *restrict srcV =
@@ -643,7 +647,7 @@ bool convertYUV420ToRGB(const QByteArray &   sourceBuffer,
 bool convertYUVPlanarToRGB(const QByteArray &    sourceBuffer,
                            uchar *               targetBuffer,
                            const Size            curFrameSize,
-                           const YUVPixelFormat &sourceBufferFormat)
+                           const PixelFormatYUV &sourceBufferFormat)
 {
   // These are constant for the runtime of this function. This way, the compiler can optimize the
   // hell out of this function.
@@ -751,11 +755,14 @@ bool convertYUVPlanarToRGB(const QByteArray &    sourceBuffer,
 
 } // namespace
 
+namespace video::yuv
+{
+
 // Convert the given raw YUV data in sourceBuffer (using srcPixelFormat) to image (RGB-888), using
 // the buffer tmpRGBBuffer for intermediate RGB values.
 void convertYUVToImage(const QByteArray &    sourceBuffer,
                        QImage &              outputImage,
-                       const YUVPixelFormat &yuvFormat,
+                       const PixelFormatYUV &yuvFormat,
                        const Size &          curFrameSize)
 {
   if (!yuvFormat.canConvertToRGB(curFrameSize) || sourceBuffer.isEmpty())
@@ -828,3 +835,5 @@ void convertYUVToImage(const QByteArray &    sourceBuffer,
       outputImage = outputImage.convertToFormat(f);
   }
 }
+
+} // namespace video::yuv
