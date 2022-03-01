@@ -70,6 +70,12 @@ parser::CodingEnum<NalType> nalTypeCoding(
 
 }
 
+bool isIRAP(NalType nal_unit_type)
+{
+  return nal_unit_type == NalType::IDR_W_RADL || nal_unit_type == NalType::IDR_N_LP ||
+         nal_unit_type == NalType::CRA_NUT;
+}
+
 void nal_unit_header::parse(SubByteReaderLogging &reader)
 {
   SubByteReaderLoggingSubLevel subLevel(reader, "nal_unit_header");

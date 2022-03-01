@@ -23,7 +23,7 @@ SOFTWARE. */
 
 #pragma once
 
-#include "common/typedef.h"
+#include "common/Typedef.h"
 
 #include <functional>
 #include <memory>

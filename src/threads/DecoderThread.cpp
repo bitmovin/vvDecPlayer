@@ -258,7 +258,7 @@ void DecoderThread::runDecoder()
 
           auto &frame       = itSegmentFrames->frames.at(currentFrameIdxInSegment);
           frame->rawYUVData  = this->decoder->getRawFrameData();
-          frame->pixelFormat = this->decoder->getYUVPixelFormat();
+          frame->pixelFormat = this->decoder->getPixelFormatYUV();
           frame->frameSize   = this->decoder->getFrameSize();
           frame->frameState  = FrameState::Decoded;
 

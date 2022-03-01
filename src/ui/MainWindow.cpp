@@ -23,7 +23,7 @@ SOFTWARE. */
 
 #include "MainWindow.h"
 
-#include <common/typedef.h>
+#include <common/Typedef.h>
 #include <decoder/decoderVVDec.h>
 
 #include <QFileDialog>

@@ -192,8 +192,8 @@ void ViewWidget::drawRenditionInfo(QPainter &painter)
     return;
 
   auto renditions               = manifest->getRenditionInfos();
-  auto currentTargetRendition   = manifest->getCurrentRencodition();
-  auto currentPlaybackRendition = this->curFrame.segment->segmentInfo.rendition;
+  auto currentTargetRendition   = int(manifest->getCurrentRencodition());
+  auto currentPlaybackRendition = int(this->curFrame.segment->segmentInfo.rendition);
 
   const auto arrawText     = "-->";
   const auto arrowTextSize = QFontMetrics(painter.font()).size(0, arrawText);
@@ -202,15 +202,11 @@ void ViewWidget::drawRenditionInfo(QPainter &painter)
   arrowTextRect.setLeft(0);
 
   unsigned topPos = 0;
-  for (auto i = int(renditions.size() - 1); i >= 0; i--)
+  for (auto i = int(renditions.size()) - 1; i >= 0; --i)
   {
     const auto &rendition = renditions.at(i);
 
-    if (i == currentPlaybackRendition)
-      painter.setPen(Qt::green);
-    else
-      painter.setPen(Qt::white);
-
+    painter.setPen(i == currentPlaybackRendition ? Qt::green : Qt::white);
     if (i == currentTargetRendition)
     {
       arrowTextRect.moveTop(topPos);
