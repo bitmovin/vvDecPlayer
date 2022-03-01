@@ -28,7 +28,7 @@ SOFTWARE. */
 #include <QSettings>
 #include <cstring>
 
-#include "common/typedef.h"
+#include "common/Typedef.h"
 
 // Debug the decoder ( 0:off 1:interactive deocder only 2:caching decoder only 3:both)
 #define decoderVVDec_DEBUG_OUTPUT 0

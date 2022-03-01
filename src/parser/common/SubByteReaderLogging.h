@@ -29,7 +29,7 @@ SOFTWARE. */
 #include "SubByteReader.h"
 #include "SubByteReaderLoggingOptions.h"
 #include "TreeItem.h"
-#include "common/typedef.h"
+#include "common/Typedef.h"
 
 namespace parser::reader
 {

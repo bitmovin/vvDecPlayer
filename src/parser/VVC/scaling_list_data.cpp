@@ -24,7 +24,7 @@ SOFTWARE. */
 #include "scaling_list_data.h"
 
 #include "adaptation_parameter_set_rbsp.h"
-#include "common/typedef.h"
+#include "common/Typedef.h"
 
 namespace parser::vvc
 {

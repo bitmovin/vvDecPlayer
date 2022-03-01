@@ -25,7 +25,7 @@ SOFTWARE. */
 
 #include <common/ILogger.h>
 #include <common/Segment.h>
-#include <common/typedef.h>
+#include <common/Typedef.h>
 
 #include <QDir>
 #include <QNetworkAccessManager>

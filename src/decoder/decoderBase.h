@@ -24,7 +24,7 @@ SOFTWARE. */
 #pragma once
 
 #include <common/EnumMapper.h>
-#include <common/typedef.h>
+#include <common/Typedef.h>
 #include <video/PixelFormatRGB.h>
 #include <video/PixelFormatYUV.h>
 

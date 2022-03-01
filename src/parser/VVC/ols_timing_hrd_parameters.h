@@ -23,7 +23,7 @@ SOFTWARE. */
 
 #pragma once
 
-#include "common/typedef.h"
+#include "common/Typedef.h"
 #include "parser/common/SubByteReaderLogging.h"
 #include "sublayer_hrd_parameters.h"
 

@@ -23,7 +23,7 @@ SOFTWARE. */
 
 #pragma once
 
-#include "typedef.h"
+#include "Typedef.h"
 #include <QByteArray>
 #include <QImage>
 #include <video/PixelFormatYUV.h>
